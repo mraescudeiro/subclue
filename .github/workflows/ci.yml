@@ -9,40 +9,38 @@ on:
 jobs:
   test-rls:
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:20.10.16
-        options: --privileged
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Supabase CLI
-        run: npm install -g supabase
+        uses: supabase/setup-cli@v1
+        with:
+          # ou deixe vazio para usar a versão default
+          version: '2.20.3'
 
-      - name: Start Supabase local stack
-        run: supabase start --docker --detached
+      - name: Start local Supabase (DB + Auth + REST)
+        run: supabase start --docker
+        # monta o stack em containers via Docker
 
       - name: Wait for Postgres to be ready
         run: |
-          until docker exec \
-            $(docker ps --filter "name=supabase_db" --format "{{.Names}}" | head -n1) \
-            pg_isready -U postgres; do
+          # padrão é localhost:5432
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Aguardando Postgres..."
             sleep 1
           done
 
-      - name: Reset & seed database
+      - name: Reset database and apply migrations
         run: supabase db reset --local
 
       - name: Run RLS tests
         env:
           PGPASSWORD: postgres
         run: |
-          DB_CONTAINER=$(docker ps --filter "name=supabase_db" --format "{{.Names}}" | head -n1)
-          PORT=$(docker port $DB_CONTAINER 5432 | sed 's/.*://')
-          psql -h localhost -p $PORT -U postgres -d postgres -f scripts/test_rls.sql
+          psql -h localhost -p 5432 -U postgres -d postgres \
+            -f scripts/test_rls.sql
 
-      - name: Stop Supabase local stack
+      - name: Tear down Supabase
         if: always()
         run: supabase stop
