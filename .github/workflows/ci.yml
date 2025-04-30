@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-rls:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:20.10.16
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Start Supabase local stack
+        run: supabase start --docker --detached
+
+      - name: Wait for Postgres to be ready
+        run: |
+          until docker exec \
+            $(docker ps --filter "name=supabase_db" --format "{{.Names}}" | head -n1) \
+            pg_isready -U postgres; do
+            sleep 1
+          done
+
+      - name: Reset & seed database
+        run: supabase db reset --local
+
+      - name: Run RLS tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          DB_CONTAINER=$(docker ps --filter "name=supabase_db" --format "{{.Names}}" | head -n1)
+          PORT=$(docker port $DB_CONTAINER 5432 | sed 's/.*://')
+          psql -h localhost -p $PORT -U postgres -d postgres -f scripts/test_rls.sql
+
+      - name: Stop Supabase local stack
+        if: always()
+        run: supabase stop
