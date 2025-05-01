@@ -14,16 +14,14 @@ SET ROLE anon;
 SELECT * FROM public.produto_atributos WHERE produto_id = :'pid';
 
 \echo '[ANON] tentar INSERT em atributos (deve falhar)'
-INSERT INTO public.produto_atributos (produto_id, nome, tipo)
-VALUES (:'pid', 'X', 'string');
+INSERT INTO public.produto_atributos (produto_id,nome,tipo)
+  VALUES (:'pid','X','string');
 
 \echo '[ANON] SELECT variantes'
 SELECT * FROM public.produto_variantes WHERE produto_id = :'pid';
 
 \echo '[ANON] tentar UPDATE em variantes (deve falhar)'
-UPDATE public.produto_variantes
-SET estoque = 10
-WHERE id = :'varid';
+UPDATE public.produto_variantes SET estoque = 10 WHERE id = :'varid';
 
 -- =======================================================
 -- 2) AUTHENTICATED: simula o parceiro dono
@@ -34,28 +32,26 @@ SET request.jwt.claim.sub = :'partnr';
 SET ROLE authenticated;
 
 \echo '[AUTH] INSERT atributos (deve passar)'
-INSERT INTO public.produto_atributos (produto_id, nome, tipo)
-VALUES (:'pid', 'Cor', 'string');
+INSERT INTO public.produto_atributos (produto_id,nome,tipo)
+  VALUES (:'pid','Cor','string');
 
 \echo '[AUTH] INSERT atributo_valores (deve passar)'
-INSERT INTO public.produto_atributo_valores (atributo_id, valor)
-VALUES (
-  (SELECT id FROM public.produto_atributos WHERE nome = 'Cor' LIMIT 1),
-  'Azul'
-);
+INSERT INTO public.produto_atributo_valores (atributo_id,valor)
+ VALUES (
+   (SELECT id FROM public.produto_atributos WHERE nome='Cor' LIMIT 1),
+   'Azul'
+ );
 
 \echo '[AUTH] UPDATE variantes (deve passar)'
-UPDATE public.produto_variantes
-SET estoque = 123
-WHERE id = :'varid';
+UPDATE public.produto_variantes SET estoque = 123 WHERE id = :'varid';
 
 \echo '[AUTH] INSERT variante_valores (deve passar)'
-INSERT INTO public.variante_valores (variante_id, atributo_id, valor)
-VALUES (
-  :'varid',
-  (SELECT id FROM public.produto_atributos WHERE nome = 'Cor' LIMIT 1),
-  'Azul'
-);
+INSERT INTO public.variante_valores (variante_id,atributo_id,valor)
+ VALUES (
+   :'varid',
+   (SELECT id FROM public.produto_atributos WHERE nome='Cor' LIMIT 1),
+   'Azul'
+ );
 
 -- =======================================================
 -- 3) VOLTAR A ANON e conferir SELECTs finais
@@ -65,26 +61,26 @@ VALUES (
 SET ROLE anon;
 
 \echo '[ANON] contagem final de atributos'
-SELECT COUNT(*) AS total_atributos
-FROM public.produto_atributos
-WHERE produto_id = :'pid';
+SELECT count(*) AS total_atributos
+  FROM public.produto_atributos
+ WHERE produto_id = :'pid';
 
 \echo '[ANON] contagem final de valores de atributo'
-SELECT COUNT(*) AS total_valores_atributo
-FROM public.produto_atributo_valores
-WHERE atributo_id IN (
-  SELECT id FROM public.produto_atributos WHERE produto_id = :'pid'
-);
+SELECT count(*) AS total_valores_atributo
+  FROM public.produto_atributo_valores
+ WHERE atributo_id IN (
+   SELECT id FROM public.produto_atributos WHERE produto_id = :'pid'
+ );
 
 \echo '[ANON] contagem final de variantes'
-SELECT COUNT(*) AS total_variantes
-FROM public.produto_variantes
-WHERE produto_id = :'pid';
+SELECT count(*) AS total_variantes
+  FROM public.produto_variantes
+ WHERE produto_id = :'pid';
 
 \echo '[ANON] contagem final de valores de variante'
-SELECT COUNT(*) AS total_valores_variante
-FROM public.variante_valores
-WHERE variante_id = :'varid';
+SELECT count(*) AS total_valores_variante
+  FROM public.variante_valores
+ WHERE variante_id = :'varid';
 
 -- =======================================================
 -- 4) TESTES PARA reviews (FK exige usuário existente)
@@ -92,17 +88,17 @@ WHERE variante_id = :'varid';
 \echo
 \echo '=== REVIEWS TESTS ==='
 
--- Cria usuário dummy em auth.users
+-- cria usuário dummy em auth.users
 SET ROLE postgres;
-INSERT INTO auth.users (id, aud, role, created_at)
-VALUES (:'partnr', 'authenticated', 'authenticated', NOW())
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO auth.users (id,aud,role,created_at)
+  VALUES (:'partnr','authenticated','authenticated',now())
+  ON CONFLICT (id) DO NOTHING;
 
 -- ANON: não pode inserir
 SET ROLE anon;
 \echo '[ANON] tentar INSERT em reviews (deve falhar)'
-INSERT INTO public.reviews (produto_id, user_id, rating)
-VALUES (:'pid', auth.uid(), 5);
+INSERT INTO public.reviews (produto_id,user_id,rating)
+  VALUES (:'pid', :'partnr', 5);
 
 \echo '[ANON] SELECT reviews'
 SELECT * FROM public.reviews WHERE produto_id = :'pid';
@@ -111,8 +107,8 @@ SELECT * FROM public.reviews WHERE produto_id = :'pid';
 SET request.jwt.claim.sub = :'partnr';
 SET ROLE authenticated;
 \echo '[AUTH] INSERT em reviews (deve passar)'
-INSERT INTO public.reviews (produto_id, user_id, rating)
-VALUES (:'pid', auth.uid(), 4);
+INSERT INTO public.reviews (produto_id,user_id,rating)
+  VALUES (:'pid', :'partnr', 4);
 
 \echo '[AUTH] SELECT reviews'
 SELECT * FROM public.reviews WHERE produto_id = :'pid';
