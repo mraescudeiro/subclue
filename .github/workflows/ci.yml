@@ -9,56 +9,54 @@ on:
 jobs:
   test-rls:
     runs-on: ubuntu-latest
+
     steps:
-      # 1) Baixa o código
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Instala e cacheia o Supabase CLI
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: '2.20.3'
+          version: '2.20.3'    # or omit to use latest
 
-      # 3) Instala o cliente psql
       - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      # 4) Sobe o Supabase local (usa as portas padrão do config)
-      - name: Start local Supabase (DB+Auth+REST)
+      - name: Start local Supabase
         run: supabase start
+        # (no --docker flag any more)
 
-      # 5) Espera o Postgres em localhost:5432 ficar pronto
       - name: Wait for Postgres to be ready
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Aguardando Postgres..."
+          # extract the host and port from `supabase status --json`
+          STATUS=$(supabase status --json)
+          # e.g. db.url = "postgresql://postgres:postgres@127.0.0.1:18935/postgres"
+          DB_URL=$(jq -r .db.url <<<"$STATUS")
+          HOST=$(sed -E 's|postgresql://[^@]+@([^:]+):([0-9]+)/.*|\1|' <<<"$DB_URL")
+          PORT=$(sed -E 's|postgresql://[^@]+@([^:]+):([0-9]+)/.*|\2|' <<<"$DB_URL")
+          echo "Waiting on Postgres at $HOST:$PORT"
+          until pg_isready -h $HOST -p $PORT -U postgres; do
+            echo -n "."
             sleep 1
           done
 
-      # 6) Reseta o banco e aplica migrations
       - name: Reset database and apply migrations
         run: supabase db reset --local
 
-      # 7) Aguarda de novo o Postgres após o reset
-      - name: Wait for Postgres after reset
+      - name: Wait again for Postgres after reset
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Aguardando Postgres pós-reset..."
+          until pg_isready -h $HOST -p $PORT -U postgres; do
+            echo -n "."
             sleep 1
           done
 
-      # 8) Executa os testes de RLS
       - name: Run RLS tests
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -p 5432 -U postgres -d postgres \
+          psql -h $HOST -p $PORT -U postgres -d postgres \
             -f scripts/test_rls.sql
 
-      # 9) Derruba o Supabase local
       - name: Tear down Supabase
         if: always()
         run: supabase stop
