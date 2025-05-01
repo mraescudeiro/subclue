@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, ci-add-rls-tests ]
   pull_request:
     branches: [ main ]
 
@@ -59,10 +59,4 @@ jobs:
 
       - name: Wait for Postgres
         run: |
-          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres...'; sleep 1; done"
-
-      - name: Reset database
-        run: supabase db reset --local
-
-      - name: Wait for Postgres after reset
-# trigger build
+          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres...'; sleep 1_
