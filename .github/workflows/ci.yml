@@ -9,44 +9,48 @@ on:
 jobs:
   test-rls:
     runs-on: ubuntu-latest
-
     steps:
+      # 1) Baixa o código
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install psql client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Install Supabase CLI
+      # 2) Instala e cacheia o Supabase CLI
+      - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: '2.20.3'
 
-      - name: Start local Supabase (DB+Auth+REST) on fixed ports
+      # 3) Instala o cliente psql
+      - name: Install PostgreSQL client
         run: |
-          # força mapear o Postgres em localhost:5432
-          supabase start --docker \
-            --db-port 5432 \
-            --api-port 54321 \
-            --studio-port 54323
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
-      - name: Wait for Postgres on localhost:5432
+      # 4) Sobe o Supabase local (usa as portas padrão do config)
+      - name: Start local Supabase (DB+Auth+REST)
+        run: supabase start
+
+      # 5) Espera o Postgres em localhost:5432 ficar pronto
+      - name: Wait for Postgres to be ready
         run: |
           until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "⏳ Aguardando Postgres em localhost:5432…"
+            echo "Aguardando Postgres..."
             sleep 1
           done
 
+      # 6) Reseta o banco e aplica migrations
       - name: Reset database and apply migrations
         run: supabase db reset --local
 
-      - name: Wait again for Postgres after reset
+      # 7) Aguarda de novo o Postgres após o reset
+      - name: Wait for Postgres after reset
         run: |
           until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "⏳ Aguardando Postgres (pós-reset)…"
+            echo "Aguardando Postgres pós-reset..."
             sleep 1
           done
 
+      # 8) Executa os testes de RLS
       - name: Run RLS tests
         env:
           PGPASSWORD: postgres
@@ -54,6 +58,7 @@ jobs:
           psql -h localhost -p 5432 -U postgres -d postgres \
             -f scripts/test_rls.sql
 
+      # 9) Derruba o Supabase local
       - name: Tear down Supabase
         if: always()
         run: supabase stop
