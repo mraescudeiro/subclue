@@ -32,13 +32,20 @@ jobs:
       - name: Start Supabase
         run: supabase start
 
-      - name: Detect dynamic Postgres port
+        - name: Discover Postgres container name and port
         id: detect-port
         run: |
-          DB_CONTAINER=supabase_db_mraescudeiro
+          echo "::group::Containers em execução"
+          docker ps --format 'table {{.Names}}\t{{.Ports}}'
+          echo "::endgroup::"
+      
+          DB_CONTAINER=$(docker ps --filter "expose=5432" --format '{{.Names}}' | grep db | head -n 1)
+          echo "Container de banco encontrado: $DB_CONTAINER"
+      
           PGPORT=$(docker inspect $DB_CONTAINER --format='{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}')
           echo "PGPORT=$PGPORT" >> $GITHUB_ENV
-          echo "::notice title=Detected Port::PGPORT=$PGPORT"
+          echo "::notice title=Postgres Detected::Container=$DB_CONTAINER / Port=$PGPORT"
+      
 
       - name: Wait for Postgres
         run: |
