@@ -1,52 +1,43 @@
-# Makefile para comandos comuns
+# Makefile
 
-# Ajuste se mudar de porta/host
-PGHOST      ?= localhost
-PGPORT      ?= 18935
-PGUSER      ?= postgres
-PGPASSWORD  ?= postgres
-PGDATABASE  ?= postgres
+# Variáveis padrão
+PGHOST ?= localhost
+PGPORT ?= 5432
+DB_CONTAINER := supabase_db_mraescudeiro
 
-SUPABASE_CLI := supabase
+# Detecta a porta mapeada dinamicamente
+get-port:
+	$(eval PGPORT := $(shell docker inspect $(DB_CONTAINER) --format='{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}'))
+	@if [ -z "$(PGPORT)" ]; then echo "❌ Porta não encontrada para $(DB_CONTAINER)."; exit 1; fi
+	@echo "Usando PGPORT=$(PGPORT)"
 
-.PHONY: help start db-reset test-rls db-test stop
+# Inicia o Supabase local
+start-supabase:
+	@echo "Iniciando Supabase..."
+	supabase start
 
-help:
-	@echo "Makefile commands:"
-	@echo "  make start    → sobe o Supabase local"
-	@echo "  make db-reset → reset + migrations"
-	@echo "  make test-rls → roda só os testes de RLS (assume já resetado)"
-	@echo "  make db-test  → reset + migrations + testes de RLS"
-	@echo "  make stop     → derruba o stack Supabase"
+# Reseta o banco de dados
+reset-db:
+	@echo "Resetando banco de dados..."
+	supabase db reset --local
 
-start:
-	@echo "🚀 Starting Supabase local..."
-	$(SUPABASE_CLI) start
+# Aguarda o Postgres estar pronto
+wait-db:
+	@echo "Aguardando Postgres na porta $(PGPORT)..."
+	@timeout 30s bash -c "until pg_isready -h $(PGHOST) -p $(PGPORT); do sleep 1; done" || \
+		(echo "Erro: Postgres não está pronto em 30s" && exit 1)
 
-db-reset:
-	@echo "💣 Resetando banco e aplicando migrations..."
-	$(SUPABASE_CLI) db reset --local
+# Executa os testes RLS
+run-tests:
+	@echo "Executando testes RLS..."
+	PGPASSWORD=postgres psql -h $(PGHOST) -p $(PGPORT) -U postgres -d postgres -f scripts/test_rls.sql
 
-test-rls:
-	@echo "🔒 Executando apenas testes de RLS..."
-	PGPASSWORD=$(PGPASSWORD) psql \
-	  -h $(PGHOST) -p $(PGPORT) -U $(PGUSER) -d $(PGDATABASE) \
-	  -f scripts/test_rls.sql
+# Para o Supabase
+stop-supabase:
+	@echo "Parando Supabase..."
+	supabase stop
 
-db-test: start db-reset
-	@echo "⏳ Aguardando Postgres ficar pronto em $(PGHOST):$(PGPORT)…"
-	@until pg_isready -h $(PGHOST) -p $(PGPORT) -U $(PGUSER); do \
-	  echo -n "."; sleep 1; \
-	done
-	@echo "\n🔒 Executando testes de RLS..."
-	PGPASSWORD=$(PGPASSWORD) psql \
-	  -h $(PGHOST) -p $(PGPORT) -U $(PGUSER) -d $(PGDATABASE) \
-	  -f scripts/test_rls.sql
-	@echo "🛑 Parando Supabase local…"
-	$(SUPABASE_CLI) stop
+# Target principal
+test-rls: start-supabase get-port reset-db wait-db run-tests stop-supabase
 
-stop:
-	@echo "🛑 Parando Supabase local…"
-	$(SUPABASE_CLI) stop
-
-
+.PHONY: test-rls start-supabase get-port reset-db wait-db run-tests stop-supabase
