@@ -11,51 +11,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout do repositório
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Instalar Supabase CLI
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: '2.20.3'   # ou deixar vazio para versão default
+          version: '2.20.3'
 
-      - name: Instalar cliente PostgreSQL e jq
+      - name: Install PostgreSQL client
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client jq
+          sudo apt-get install -y postgresql-client
 
-      - name: Iniciar Supabase local
+      - name: Start Supabase
         run: supabase start
 
-      - name: Aguardar Postgres ficar pronto
+      - name: Detect dynamic Postgres port
+        id: detect-port
         run: |
-          STATUS="$(supabase status --json)"
-          DB_URL="$(jq -r .db.url <<<"$STATUS")"
-          HOST="$(sed -E 's|postgresql://[^@]+@([^:]+):([0-9]+)/.*|\1|' <<<"$DB_URL")"
-          PORT="$(sed -E 's|postgresql://[^@]+@([^:]+):([0-9]+)/.*|\2|' <<<"$DB_URL")"
-          echo "Aguardando Postgres em $HOST:$PORT"
-          until pg_isready -h "$HOST" -p "$PORT" -U postgres; do
-            echo -n "."
-            sleep 1
-          done
+          DB_CONTAINER=supabase_db_mraescudeiro
+          PGPORT=$(docker inspect $DB_CONTAINER --format='{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}')
+          echo "PGPORT=$PGPORT" >> $GITHUB_ENV
+          echo "::notice title=Detected Port::PGPORT=$PGPORT"
 
-      - name: Resetar banco e aplicar migrations
+      - name: Wait for Postgres
+        run: |
+          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres...'; sleep 1; done"
+
+      - name: Reset database
         run: supabase db reset --local
 
-      - name: Aguardar Postgres após reset
+      - name: Wait for Postgres after reset
         run: |
-          until pg_isready -h "$HOST" -p "$PORT" -U postgres; do
-            echo -n "."
-            sleep 1
-          done
+          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres pós-reset...'; sleep 1; done"
 
-      - name: Executar testes de RLS
+      - name: Run RLS tests
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h "$HOST" -p "$PORT" -U postgres -d postgres \
-            -f scripts/test_rls.sql
+          psql -h localhost -p $PGPORT -U postgres -d postgres -f scripts/test_rls.sql
 
-      - name: Derrubar Supabase local
+      - name: Stop Supabase
         if: always()
         run: supabase stop
