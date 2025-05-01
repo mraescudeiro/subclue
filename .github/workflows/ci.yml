@@ -35,6 +35,13 @@ jobs:
       - name: Reset database and apply migrations
         run: supabase db reset --local
 
+      - name: Wait for Postgres after reset
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Aguardando Postgres pós-reset..."
+            sleep 1
+          done
+
       - name: Run RLS tests
         env:
           PGPASSWORD: postgres
