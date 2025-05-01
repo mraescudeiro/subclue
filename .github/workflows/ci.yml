@@ -9,23 +9,24 @@ on:
 jobs:
   test-rls:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          # ou deixe vazio para usar a versão default
           version: '2.20.3'
 
       - name: Start local Supabase (DB + Auth + REST)
-        run: supabase start --docker
-        # monta o stack em containers via Docker
+        run: supabase start
 
       - name: Wait for Postgres to be ready
         run: |
-          # padrão é localhost:5432
           until pg_isready -h localhost -p 5432 -U postgres; do
             echo "Aguardando Postgres..."
             sleep 1
