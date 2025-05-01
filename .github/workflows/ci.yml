@@ -2,27 +2,61 @@ name: CI
 
 on:
   push:
-    branches: [ main, ci-add-rls-tests ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  lint-sql:
+  test-rls:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.10'
+          node-version: '20'
 
-      - name: Install SQLFluff
-        run: |
-          pip install sqlfluff
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: '2.20.3'
 
-      - name: Lint RLS SQL file
+      - name: Install PostgreSQL client
         run: |
-          sqlfluff lint scripts/test_rls.sql --dialect postgres
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Detect dynamic Postgres port
+        id: detect-port
+        run: |
+          DB_CONTAINER=supabase_db_mraescudeiro
+          PGPORT=$(docker inspect $DB_CONTAINER --format='{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}')
+          echo "PGPORT=$PGPORT" >> $GITHUB_ENV
+          echo "::notice title=Detected Port::PGPORT=$PGPORT"
+
+      - name: Wait for Postgres
+        run: |
+          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres...'; sleep 1; done"
+
+      - name: Reset database
+        run: supabase db reset --local
+
+      - name: Wait for Postgres after reset
+        run: |
+          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres pós-reset...'; sleep 1; done"
+
+      - name: Run RLS tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -p $PGPORT -U postgres -d postgres -f scripts/test_rls.sql
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
