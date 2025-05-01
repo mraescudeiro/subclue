@@ -23,22 +23,23 @@ jobs:
           version: '2.20.3'
 
       - name: Start local Supabase (DB + Auth + REST)
-        run: supabase start
+        run: supabase start --docker
 
-      - name: Wait for Postgres to be ready
+      - name: Wait for Postgres on Docker network
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Aguardando Postgres..."
+          # 'supabase_db' é o nome do container de Postgres na mesma network
+          until pg_isready -h supabase_db -p 5432 -U postgres; do
+            echo "⏳ Aguardando Postgres no container supabase_db..."
             sleep 1
           done
 
       - name: Reset database and apply migrations
         run: supabase db reset --local
 
-      - name: Wait for Postgres after reset
+      - name: Wait again for Postgres after reset
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Aguardando Postgres pós-reset..."
+          until pg_isready -h supabase_db -p 5432 -U postgres; do
+            echo "⏳ Aguardando Postgres pós-reset..."
             sleep 1
           done
 
@@ -46,7 +47,7 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -p 5432 -U postgres -d postgres \
+          psql -h supabase_db -p 5432 -U postgres -d postgres \
             -f scripts/test_rls.sql
 
       - name: Tear down Supabase
