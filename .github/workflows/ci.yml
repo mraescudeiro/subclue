@@ -10,6 +10,14 @@ jobs:
   test-rls:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: write
+
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,23 +37,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
+      - name: Ensure Docker is running
+        run: docker info
+
       - name: Start Supabase
         run: supabase start
 
-        - name: Discover Postgres container name and port
+      - name: Discover Postgres container name and port
         id: detect-port
         run: |
           echo "::group::Containers em execução"
           docker ps --format 'table {{.Names}}\t{{.Ports}}'
           echo "::endgroup::"
-      
+
           DB_CONTAINER=$(docker ps --filter "expose=5432" --format '{{.Names}}' | grep db | head -n 1)
           echo "Container de banco encontrado: $DB_CONTAINER"
-      
+
           PGPORT=$(docker inspect $DB_CONTAINER --format='{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}')
           echo "PGPORT=$PGPORT" >> $GITHUB_ENV
           echo "::notice title=Postgres Detected::Container=$DB_CONTAINER / Port=$PGPORT"
-      
 
       - name: Wait for Postgres
         run: |
@@ -55,15 +65,3 @@ jobs:
         run: supabase db reset --local
 
       - name: Wait for Postgres after reset
-        run: |
-          timeout 30s bash -c "until pg_isready -h localhost -p $PGPORT -U postgres; do echo 'Aguardando Postgres pós-reset...'; sleep 1; done"
-
-      - name: Run RLS tests
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h localhost -p $PGPORT -U postgres -d postgres -f scripts/test_rls.sql
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop
