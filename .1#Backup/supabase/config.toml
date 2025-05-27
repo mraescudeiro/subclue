@@ -1,8 +1,0 @@
-project_id = "subclue"
-
-[functions.list_produtos]
-  # O entrypoint deve ser o caminho para o arquivo da função,
-  # relativo ao diretório onde este config.toml reside (ou seja, supabase/).
-  # Para alcançar supabase/functions/list_produtos/index.ts, o entrypoint será:
-  entrypoint = "functions/list_produtos/index.ts"
-  verify_jwt = false

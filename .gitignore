@@ -72,3 +72,6 @@ supabase/functions/*/node_modules/
 # !.vscode/settings.json
 # !.vscode/tasks.json
 node_modules
+# Backups locais ou pastas temporárias
+/.1#Backup/
+*.save
