@@ -1,1 +1,0 @@
-SELECT 'Seed mínimo executado.';

@@ -1,0 +1,11 @@
+-- 2) re-validar (ou recriar) as constraints corretas
+ALTER TABLE public.assinantes      VALIDATE CONSTRAINT assinantes_status_check;
+ALTER TABLE public.parceiros      VALIDATE CONSTRAINT parceiros_plano_check;
+ALTER TABLE public.payouts        VALIDATE CONSTRAINT payouts_status_check;
+ALTER TABLE public.periodos       VALIDATE CONSTRAINT periodos_periodicidade_check;
+
+-- 2) re-validar (ou recriar) as constraints corretas
+ALTER TABLE public.assinantes      VALIDATE CONSTRAINT assinantes_status_check;
+ALTER TABLE public.parceiros       VALIDATE CONSTRAINT parceiros_plano_check;
+ALTER TABLE public.payouts         VALIDATE CONSTRAINT payouts_status_check;
+ALTER TABLE public.periodos        VALIDATE CONSTRAINT periodos_periodicidade_check;

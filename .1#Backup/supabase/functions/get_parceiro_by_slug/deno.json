@@ -1,0 +1,12 @@
+{
+  "imports": {},
+  "compilerOptions": {
+    "lib": [
+      "esnext"
+    ],
+    "strict": true
+  },
+  "unstable": [
+    "sloppy-imports"
+  ]
+}

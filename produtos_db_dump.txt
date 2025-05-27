@@ -1,0 +1,145 @@
+########## DDL – public.produtos ##########
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 15.8
+-- Dumped by pg_dump version 15.12 (Ubuntu 15.12-1.pgdg22.04+1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: produtos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.produtos (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    parceiro_id uuid,
+    titulo text NOT NULL,
+    descricao text,
+    preco_cents integer NOT NULL,
+    currency character(3) DEFAULT 'USD'::bpchar,
+    promo_code text,
+    media_iframe text,
+    ativo boolean DEFAULT false,
+    reviewed boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    tipo_produto text DEFAULT 'digital'::text NOT NULL,
+    peso_gramas integer,
+    dimensoes_cm jsonb,
+    sku text,
+    stock integer DEFAULT 0 NOT NULL,
+    status_estoque public.produtos_status_estoque_enum DEFAULT 'in_stock'::public.produtos_status_estoque_enum NOT NULL,
+    rating numeric(2,1) DEFAULT 0 NOT NULL,
+    tsv tsvector GENERATED ALWAYS AS (to_tsvector('portuguese'::regconfig, ((COALESCE(titulo, ''::text) || ' '::text) || COALESCE(descricao, ''::text)))) STORED,
+    tags text[] DEFAULT '{}'::text[],
+    rating_media numeric DEFAULT 0,
+    total_reviews integer DEFAULT 0,
+    published_at timestamp with time zone,
+    stock_quantity integer DEFAULT 0,
+    average_rating numeric(2,1) DEFAULT 0,
+    CONSTRAINT produtos_peso_gramas_check CHECK ((peso_gramas > 0)),
+    CONSTRAINT produtos_preco_cents_check CHECK ((preco_cents > 0)),
+    CONSTRAINT produtos_tipo_produto_check CHECK ((tipo_produto = ANY (ARRAY['digital'::text, 'physical'::text, 'service'::text])))
+);
+
+
+--
+-- Name: COLUMN produtos.tipo_produto; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.produtos.tipo_produto IS 'Indica se o produto é digital, físico (requer envio) ou um serviço.';
+
+
+--
+-- Name: COLUMN produtos.peso_gramas; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.produtos.peso_gramas IS 'Peso do produto em gramas (para cálculo de frete).';
+
+
+--
+-- Name: COLUMN produtos.dimensoes_cm; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.produtos.dimensoes_cm IS 'Dimensões do produto em centímetros (altura, largura, profundidade) para cálculo de frete.';
+
+
+--
+-- Name: produtos produtos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.produtos
+    ADD CONSTRAINT produtos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_produtos_tsv; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_produtos_tsv ON public.produtos USING gin (tsv);
+
+
+--
+-- Name: produtos produtos_parceiro_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.produtos
+    ADD CONSTRAINT produtos_parceiro_id_fkey FOREIGN KEY (parceiro_id) REFERENCES public.parceiros(id) ON DELETE CASCADE;
+
+
+--
+-- Name: produtos partner_products; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY partner_products ON public.produtos USING ((parceiro_id IN ( SELECT parceiros.id
+   FROM public.parceiros
+  WHERE (parceiros.owner_id = auth.uid())))) WITH CHECK ((parceiro_id IN ( SELECT parceiros.id
+   FROM public.parceiros
+  WHERE (parceiros.owner_id = auth.uid()))));
+
+
+--
+-- Name: produtos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.produtos ENABLE ROW LEVEL SECURITY;
+
+--
+-- PostgreSQL database dump complete
+--
+
+
+########## TRIGGERS ##########
+Expanded display is on.
+(0 rows)
+
+
+########## FUNÇÕES REFERENCIADAS ##########
+
+########## POLÍTICAS RLS ##########
+                                                       Access privileges
+ Schema |   Name   | Type  |       Access privileges        | Column privileges |                   Policies                   
+--------+----------+-------+--------------------------------+-------------------+----------------------------------------------
+ public | produtos | table | postgres=arwdDxt/postgres     +|                   | partner_products:                           +
+        |          |       | anon=arwdDxt/postgres         +|                   |   (u): (parceiro_id IN ( SELECT parceiros.id+
+        |          |       | authenticated=arwdDxt/postgres+|                   |    FROM parceiros                           +
+        |          |       | service_role=arwdDxt/postgres  |                   |   WHERE (parceiros.owner_id = auth.uid()))) +
+        |          |       |                                |                   |   (c): (parceiro_id IN ( SELECT parceiros.id+
+        |          |       |                                |                   |    FROM parceiros                           +
+        |          |       |                                |                   |   WHERE (parceiros.owner_id = auth.uid())))
+(1 row)
+
