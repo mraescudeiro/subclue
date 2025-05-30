@@ -1,23 +1,25 @@
 // app/api/auth/signout/route.ts
+import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import type { Database } from '@/lib/database.types';
 
-import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import type { Database } from '@/lib/database.types'
-
-// Garantir execução dinâmica (para cookies() funcionar corretamente)
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'; // Ensures dynamic execution
 
 export async function POST(request: Request) {
-  // Cria o client de rota usando o cookie store do Next.js
-  const supabase = createRouteHandlerClient<Database>({
-    cookies: cookies(),
-  })
+  const cookieStore = cookies(); 
+  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
 
-  // Executa o sign out no Supabase
-  await supabase.auth.signOut()
+  console.log('[API_SIGNOUT_ROUTE] POST route called. Attempting supabase.auth.signOut()...');
+  const { error } = await supabase.auth.signOut();
 
-  // Redireciona para a home (usar URL absoluta baseada na request)
-  const redirectUrl = new URL('/', request.url)
-  return NextResponse.redirect(redirectUrl)
+  if (error) {
+    console.error('[API_SIGNOUT_ROUTE] Error in Supabase signOut:', error);
+    return NextResponse.json({ message: 'Error trying to logout on the server.', error: error.message }, { status: 500 });
+  }
+
+  console.log('[API_SIGNOUT_ROUTE] Supabase signOut on the server successful. Returning JSON response.');
+  // Retorna uma resposta JSON em vez de redirecionar, como solicitado por Jules.
+  // O redirecionamento será feito no cliente após esta chamada.
+  return NextResponse.json({ message: 'Logout successful' }, { status: 200 });
 }

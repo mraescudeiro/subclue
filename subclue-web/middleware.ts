@@ -1,41 +1,30 @@
-// middleware.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { updateSession } from '@/utils/supabase/middleware' // já criado antes
-import type { Database } from '@/lib/database.types'
+    // Local do arquivo: subclue-web/middleware.ts
+    import { NextResponse, type NextRequest } from 'next/server';
+    import { updateSession } from '@/utils/supabase/middleware'; // Importa nossa função centralizada
 
-/* Rotas que NÃO devem ser acessíveis autenticado */
-const authPaths = ['/login', '/signup', '/auth/callback']
+    // A função DEVE se chamar 'middleware' e ser exportada.
+    export async function middleware(request: NextRequest) {
+      console.log(`[MAIN MIDDLEWARE] Path: ${request.nextUrl.pathname}. Chamando updateSession...`);
 
-export async function middleware(req: NextRequest) {
-  /* 1)   Mantém a atualização de cookie */
-  const res = await updateSession(req)
+      // Chama a função updateSession, que agora lida com toda a lógica de sessão e redirecionamento.
+      // updateSession retornará uma NextResponse (seja um redirecionamento ou a continuação do fluxo).
+      const response = await updateSession(request);
 
-  /* 2)   Cria cliente só para checar se há usuário */
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => req.cookies.get(name)?.value,
-      },
-    },
-  )
+      console.log(`[MAIN MIDDLEWARE] Retornando resposta de updateSession.`);
+      return response;
+    }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  /* 3)   Se já logado e tentando /login|/signup|/auth/callback → manda p/ home   */
-  if (user && authPaths.some((p) => req.nextUrl.pathname.startsWith(p))) {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
-
-  /* 4)   Caso contrário segue normalmente */
-  return res
-}
-
-/* Aplica em todas as rotas (exceto assets) */
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-}
+    // O objeto de configuração do matcher permanece o mesmo.
+    export const config = {
+      matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - api (API routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        '/((?!api|_next/static|_next/image|favicon.ico).*)',
+      ],
+    };
+    
