@@ -1,84 +1,75 @@
-// Conteúdo CORRETO para: subclue-web/utils/supabase/middleware.ts
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Database } from '@/lib/database.types';
+import type { Database } from '@/lib/database.types'; 
 
 export async function updateSession(request: NextRequest) {
-  console.log(`[updateSession] Iniciando para Path: ${request.nextUrl.pathname}, Method: ${request.method}`);
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('[updateSession] Supabase URL ou Anon Key estão em falta nas variáveis de ambiente.');
-    return response;
-  }
-
-  console.log('[updateSession] Inicializando Supabase client...');
   const supabase = createServerClient<Database>(
-    supabaseUrl,
-    supabaseKey,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          const cookie = request.cookies.get(name)?.value;
-          const cookieLogValue = cookie ? `${cookie.substring(0, 15)}... (length: ${cookie.length})` : 'undefined';
-          console.log(`[updateSession] Supabase cookie get: name=${name}, value=${cookieLogValue}`);
-          return cookie;
+        get: (name: string) => {
+          return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
-          console.log(`[updateSession] Supabase cookie set: name=${name}, value=${value ? value.substring(0,15)+'...' : 'empty/undefined'}, path=${options.path}`);
-          request.cookies.set({ name, value, ...options });
-          response.cookies.set({ name, value, ...options });
+        set: (name: string, value: string, options: CookieOptions) => {
+          try {
+            console.log(`[MW_COOKIE_SET] Attempting to set cookie: ${name}, HasValue: ${!!value}, Path: ${options.path}, MaxAge: ${options.maxAge}, SameSite: ${options.sameSite}, HttpOnly: ${options.httpOnly}, Secure: ${options.secure}`);
+            response.cookies.set({ name, value, ...options });
+          } catch (e: any) {
+            console.error(`[MW_COOKIE_SET_ERROR] For ${name}:`, e.message);
+          }
         },
-        remove(name: string, options: CookieOptions) {
-          console.log(`[updateSession] Supabase cookie remove: name=${name}, path=${options.path}`);
-          request.cookies.set({ name, value: '', ...options });
-          response.cookies.set({ name, value: '', ...options });
+        remove: (name: string, options: CookieOptions) => {
+          try {
+            console.log(`[MW_COOKIE_REMOVE] Attempting to remove cookie: ${name}, Path: ${options.path}, MaxAge: ${options.maxAge}, SameSite: ${options.sameSite}, HttpOnly: ${options.httpOnly}, Secure: ${options.secure}`);
+            response.cookies.set({ name, value: '', ...options, maxAge: 0 });
+          } catch (e: any) {
+            console.error(`[MW_COOKIE_REMOVE_ERROR] For ${name}:`, e.message);
+          }
         },
       },
     }
   );
 
-  console.log('[updateSession] Tentando obter usuário via supabase.auth.getUser()...');
+  console.log(`[MW_SESSION] Path: ${request.nextUrl.pathname}. Attempting supabase.auth.getUser().`);
   const { data: { user }, error: getUserError } = await supabase.auth.getUser();
 
   if (getUserError) {
-    console.error('[updateSession] Erro ao chamar supabase.auth.getUser():', getUserError.message);
+    console.warn(`[MW_SESSION] Warning/Error from supabase.auth.getUser() for ${request.nextUrl.pathname}: ${getUserError.name} - ${getUserError.message}`);
   }
 
   if (user) {
-    console.log(`[updateSession] Usuário encontrado: ID=${user.id}, Email=${user.email}`);
+    console.log(`[MW_SESSION] User FOUND for ${request.nextUrl.pathname}. User ID: ${user.id}`);
   } else {
-    console.log('[updateSession] Nenhum usuário encontrado após supabase.auth.getUser().');
+    console.log(`[MW_SESSION] No user found (or session invalid/expired) for ${request.nextUrl.pathname}.`);
   }
 
   const authPaths = ['/login', '/signup'];
-  const publicPaths = ['/', '/auth/callback', '/api/auth/callback'];
-  const protectedPaths = ['/dashboard', '/settings', '/painel']; // Adicione suas rotas protegidas
-  
+  const protectedPaths = ['/painel']; 
   const currentPath = request.nextUrl.pathname;
 
-  if (user) {
+  if (user) { 
     if (authPaths.some(path => currentPath.startsWith(path))) {
-      console.log(`[updateSession] Usuário autenticado (${user.id}) em rota de auth (${currentPath}). Redirecionando para /.`);
-      return NextResponse.redirect(new URL('/', request.url));
+      console.log(`[MW_REDIRECT] Authenticated user on auth path (${currentPath}). Redirecting to HOME (/).`);
+      const homeUrl = new URL('/', request.url);
+      homeUrl.searchParams.set('cb', Date.now().toString());
+      return NextResponse.redirect(homeUrl);
     }
-  } else {
-    const isProtectedPath = protectedPaths.some(path => currentPath.startsWith(path));
-    if (isProtectedPath) {
-        console.log(`[updateSession] Usuário não autenticado em rota protegida (${currentPath}). Redirecionando para /login.`);
+  } else { 
+    const isProtectedRoute = protectedPaths.some(path => currentPath.startsWith(path));
+    if (isProtectedRoute) {
+        console.log(`[MW_REDIRECT] Unauthenticated user on protected path (${currentPath}). Redirecting to /login.`);
         const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('redirectTo', currentPath + request.nextUrl.search);
+        loginUrl.searchParams.set('redirectTo', currentPath + (request.nextUrl.search || ''));
+        loginUrl.searchParams.set('fromMiddleware', 'protectedPathRedirect');
         return NextResponse.redirect(loginUrl);
     }
   }
 
-  console.log('[updateSession] Finalizado. Retornando resposta (pode conter cookies atualizados).');
+  console.log(`[MW_SESSION] Finalizing for ${request.nextUrl.pathname}. Response status: ${response.status}. Has user: ${!!user}`);
   return response;
 }

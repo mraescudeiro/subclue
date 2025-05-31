@@ -1,24 +1,71 @@
-"use client";
+// components/ProtectedRoute.tsx
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import React, { useEffect } from 'react';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import LoadingScreen from './LoadingScreen'; // Certifique-se que este caminho está correto e o arquivo existe
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const supabase = createClientComponentClient();
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState(false);
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: string[]; // Tornando opcional com um fallback, mas idealmente deve ser sempre passado
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles = [] }) => { // Default para array vazio
+  const { user, isLoading, userRole, isLoadingRole, serverSessionError } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace("/login");
-      else setSession(true);
-      setLoading(false);
+    console.log('[ProtectedRoute] useEffect Check:', {
+      isLoading,
+      isLoadingRole,
+      user: !!user,
+      userId: user?.id,
+      userRole,
+      serverSessionError,
+      passedAllowedRoles: allowedRoles, // Log para ver o que está sendo passado
+      pathname: typeof window !== 'undefined' ? window.location.pathname : ''
     });
-  }, [router, supabase]);
 
-  if (loading) return <p>Verificando autenticação…</p>;
-  if (!session) return null;
+    if (!isLoading && !isLoadingRole) {
+      if (!user || serverSessionError) {
+        console.log('[ProtectedRoute] No user or serverSessionError. Redirecting to /login.');
+        router.replace('/login');
+      } else if (allowedRoles && allowedRoles.length > 0) { // Só checar papéis se allowedRoles for fornecido e não vazio
+        if (!userRole) {
+          console.warn('[ProtectedRoute] User authenticated, but userRole is null and route expects roles. Redirecting to /.');
+          router.replace('/'); // Ou uma página de "acesso negado" ou "perfil incompleto"
+        } else if (!allowedRoles.includes(userRole)) { // ERRO ESTAVA AQUI SE allowedRoles FOSSE UNDEFINED
+          console.log(`[ProtectedRoute] User role '${userRole}' not in allowedRoles ${JSON.stringify(allowedRoles)}. Redirecting to /.`);
+          router.replace('/');
+        }
+      }
+      // Se allowedRoles for um array vazio ou não fornecido, e o usuário estiver logado, permite o acesso.
+      // (Pode ajustar essa lógica se rotas protegidas sempre exigirem pelo menos um papel).
+    }
+  }, [user, isLoading, userRole, isLoadingRole, allowedRoles, router, serverSessionError]);
+
+  if (isLoading || isLoadingRole) {
+    console.log('[ProtectedRoute] Showing LoadingScreen:', { isLoading, isLoadingRole });
+    return <LoadingScreen />;
+  }
+
+  // Condição final para renderizar ou não
+  if (!user || serverSessionError) {
+    console.log('[ProtectedRoute] Final check: No user or serverSessionError. Not rendering children.');
+    return <LoadingScreen />;
+  }
+
+  // Se a rota exige papéis específicos
+  if (allowedRoles && allowedRoles.length > 0) {
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      console.log(`[ProtectedRoute] Final check: Role '${userRole}' not suitable for allowed roles ${JSON.stringify(allowedRoles)}. Not rendering children.`);
+      return <LoadingScreen />; // Previne flash, useEffect deve redirecionar
+    }
+  }
+
+  console.log('[ProtectedRoute] User authenticated and authorized (or route allows any authenticated user). Rendering children.');
   return <>{children}</>;
-}
+};
+
+export default ProtectedRoute;

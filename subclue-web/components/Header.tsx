@@ -1,29 +1,64 @@
-// components/Header.tsx   (Server Component)
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
-import type { Database } from '@/lib/database.types'
-import HeaderClient from './HeaderClient'
+// components/Header.tsx
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr'; // CookieOptions é usado
+import HeaderClient from './HeaderClient';
+import type { Database } from '@/lib/database.types';
+import type { User } from '@supabase/supabase-js';
 
 export default async function Header() {
-  // Busca os cookies da requisição
-  const cookieStore = await cookies()
+  const cookieStore = cookies(); // Chamada no topo do Server Component
 
-  // Cria o Supabase client no servidor usando os cookies
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) { // Especificando tipo de options
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.warn(`[Header_RSC_CookieSetWarn] Attempted to set cookie '${name}' or failed:`, error);
+          }
+        },
+        remove(name: string, options: CookieOptions) { // Especificando tipo de options
+          try {
+            cookieStore.set({ name, value: '', ...options, maxAge: 0 });
+          } catch (error) {
+            console.warn(`[Header_RSC_CookieRemoveWarn] Attempted to remove cookie '${name}' or failed:`, error);
+          }
+        },
       },
     }
-  )
+  );
 
-  // Recupera a sessão atual
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  let user: User | null = null;
+  let sessionError: string | null = null;
 
-  // Renderiza o HeaderClient, passando o usuário inicial vindo do servidor
-  return <HeaderClient initialUser={session?.user ?? null} />
+  try {
+    const { data, error: getUserError } = await supabase.auth.getUser();
+
+    if (getUserError) {
+      if (getUserError.name === "AuthSessionMissingError") {
+        console.log('[Header RSC] No user session on server (AuthSessionMissingError). Line 51 approx.');
+      } else {
+        console.error('[Header RSC] Error from supabase.auth.getUser():', getUserError.message);
+        sessionError = getUserError.message;
+      }
+    }
+    
+    if (data && data.user) {
+      user = data.user;
+      console.log('[Header RSC] User session on server (in Header.tsx):', user.id, 'Line 62 approx.');
+    } else if (!getUserError) {
+      console.log('[Header RSC] No user session on server (data.user is null, no previous error).');
+    }
+  } catch (e: any) { 
+    console.error('[Header RSC] Generic error fetching user session (in Header.tsx):', e.message, 'Line 75 approx.');
+    sessionError = e.message;
+  }
+
+  return <HeaderClient initialUser={user} initialServerSessionError={sessionError} />;
 }

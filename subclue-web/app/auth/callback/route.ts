@@ -1,68 +1,77 @@
 // app/auth/callback/route.ts
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import type { Database } from '@/lib/database.types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  console.log('[AUTH_CALLBACK_ROUTE] Received request:', request.url);
-  const { searchParams, origin } = new URL(request.url);
+  const requestUrl = new URL(request.url);
+  const { searchParams, origin } = requestUrl;
   const code = searchParams.get('code');
-  // O 'next' é o parâmetro que o Supabase usa para o redirecionamento pós-troca de código.
-  // Se não estiver presente, o padrão é a home '/'.
-  const next = searchParams.get('next') ?? '/'; 
-  console.log(`[AUTH_CALLBACK_ROUTE] Code: ${code}, Next (redirectTo from Supabase): ${next}`);
 
-  if (!code) {
-    console.log('[AUTH_CALLBACK_ROUTE] No code found, redirecting to login.');
-    return NextResponse.redirect(`${origin}/login`);
-  }
+  console.log(`[AUTH_CALLBACK_ROUTE] Received request URL: ${request.url}`);
+  console.log(`[AUTH_CALLBACK_ROUTE] Parsed params: code=${code ? code.substring(0,10)+'...' : 'null'}, origin=${origin}`);
 
-  // O destino final do redirecionamento após a troca de código bem-sucedida.
-  // Usamos o valor de 'next' que o Supabase nos passou.
-  const redirectToUrl = new URL(next, origin);
-  console.log(`[AUTH_CALLBACK_ROUTE] Determined final redirect URL: ${redirectToUrl.toString()}`);
-  
-  // Criamos a resposta de redirecionamento ANTES de trocar o código.
-  // Os cookies da sessão serão definidos nesta resposta.
-  const response = NextResponse.redirect(redirectToUrl);
+  // Por padrão, redireciona para a home em caso de sucesso do OAuth.
+  // A resposta é criada aqui e os cookies serão definidos nela.
+  let response = NextResponse.redirect(`${origin}/`); 
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          const cookies = request.cookies.getAll().map(c => ({ name: c.name, value: c.value }));
-          console.log('[AUTH_CALLBACK_ROUTE] Supabase getAll cookies (request):', cookies);
-          return cookies;
+  if (code) { // Somente processa se houver um 'code' (fluxo OAuth)
+    console.log('[AUTH_CALLBACK_ROUTE] OAuth flow detected (code present). Attempting to exchange code for session.');
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => {
+            const cookieValue = request.cookies.get(name)?.value;
+            // console.log(`[AUTH_CALLBACK_COOKIE_GET] Getting cookie: ${name}, HasValue: ${!!cookieValue}`);
+            return cookieValue;
+          },
+          set: (name: string, value: string, options: CookieOptions) => {
+            try {
+              console.log(`[AUTH_CALLBACK_COOKIE_SET] Attempting to set cookie: ${name}, HasValue: ${!!value}, Path: ${options.path}, HttpOnly: ${options.httpOnly}, MaxAge: ${options.maxAge}`);
+              response.cookies.set({ name, value, ...options });
+            } catch (e: any) {
+              console.error(`[AUTH_CALLBACK_COOKIE_SET_ERROR] For ${name}:`, e.message);
+            }
+          },
+          remove: (name: string, options: CookieOptions) => {
+            try {
+              console.log(`[AUTH_CALLBACK_COOKIE_REMOVE] Attempting to remove cookie: ${name}, Path: ${options.path}`);
+              response.cookies.set({ name, value: '', ...options, maxAge: 0 });
+            } catch (e: any) {
+              console.error(`[AUTH_CALLBACK_COOKIE_REMOVE_ERROR] For ${name}:`, e.message);
+            }
+          },
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          console.log('[AUTH_CALLBACK_ROUTE] Supabase setAll cookies (response):', cookiesToSet);
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options) // Define os cookies na RESPOSTA
-          );
-        },
-      },
-    }
-  );
+      }
+    );
 
-  console.log('[AUTH_CALLBACK_ROUTE] Attempting to exchange code for session...');
-  try {
+    // Troca o código por uma sessão. Isso deve chamar o handler 'set' para definir os cookies na 'response'.
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      console.error('[AUTH_CALLBACK_ROUTE] Error exchanging code for session:', error);
-      // Se houver erro na troca, redireciona para o login com uma mensagem de erro (opcional)
-      const loginUrl = new URL('/login', origin);
-      loginUrl.searchParams.set('error', 'auth_exchange_failed');
-      return NextResponse.redirect(loginUrl);
-    }
-    console.log('[AUTH_CALLBACK_ROUTE] Successfully exchanged code for session.');
-  } catch (e) {
-    console.error('[AUTH_CALLBACK_ROUTE] Critical error during exchangeCodeForSession:', e);
-    const loginUrl = new URL('/login', origin);
-    loginUrl.searchParams.set('error', 'auth_exchange_critical_error');
-    return NextResponse.redirect(loginUrl);
-  }
 
-  console.log(`[AUTH_CALLBACK_ROUTE] Returning response. Redirecting to: ${redirectToUrl.toString()}`);
+    if (error) {
+      const errorMsg = `OAuth_ExchangeError: ${error.name} - ${error.message}`;
+      console.error(`[AUTH_CALLBACK_ROUTE] ${errorMsg}`);
+      // Se houver erro na troca, redireciona para o login com uma mensagem de erro.
+      // A 'response' aqui será uma NOVA resposta de redirecionamento.
+      // Os cookies de limpeza (se o Supabase os definiu na 'response' original antes do erro) não serão passados
+      // a menos que copiados manualmente, mas neste ponto o mais importante é o redirect para login.
+      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorMsg)}&from=oauth_exchange_error`, 302);
+    } else {
+      console.log('[AUTH_CALLBACK_ROUTE] OAuth exchange successful. Cookies should be set by handlers. Redirecting to HOME (/).');
+      // 'response' já é um NextResponse.redirect(`${origin}/`) e deve ter os cookies de sessão.
+    }
+  } else {
+    // Se não houver 'code', esta rota não tem mais o que fazer para o fluxo fromLogin=true (que agora usa Server Action).
+    // Redireciona para o login com um erro indicando que os parâmetros são inválidos para este fluxo.
+    const noCodeMsg = 'No OAuth code found. This callback is now primarily for OAuth flows.';
+    console.log(`[AUTH_CALLBACK_ROUTE] ${noCodeMsg}`);
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(noCodeMsg)}&from=callback_no_code`, 302);
+  }
+  
+  console.log(`[AUTH_CALLBACK_ROUTE] Final redirect is to: ${response.headers.get('Location')}. Cookies set in this response should persist.`);
   return response;
 }

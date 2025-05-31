@@ -1,27 +1,11 @@
 // app/providers.tsx
-'use client'
+'use client';
 
-import { ReactNode, useEffect, useState } from 'react'
-import { AuthProvider } from '@/lib/contexts/AuthContext'
-import type { User } from '@supabase/supabase-js'
+import { AuthProvider } from '@/lib/contexts/AuthContext'; // Verifique se este caminho está correto
+import React, { ReactNode } from 'react'; // Import React se for usar JSX diretamente (boa prática)
 
-/**
- * Mantém o AuthProvider vivo entre navegações.
- * Só atualiza o usuário inicial — não recria o provider.
- */
-export default function Providers({
-  serverUser,
-  children,
-}: {
-  serverUser: User | null
-  children: ReactNode
-}) {
-  const [initialUser, setInitialUser] = useState<User | null>(serverUser)
-
-  /* se ainda não havia usuário e o servidor enviou um, atualiza */
-  useEffect(() => {
-    if (!initialUser && serverUser) setInitialUser(serverUser)
-  }, [serverUser, initialUser])
-
-  return <AuthProvider serverUser={initialUser}>{children}</AuthProvider>
+// Alterado de 'export default function' para 'export function'
+export function Providers({ children }: { children: ReactNode }) {
+  console.log('[Providers Wrapper] Rendering AuthProvider');
+  return <AuthProvider>{children}</AuthProvider>;
 }
