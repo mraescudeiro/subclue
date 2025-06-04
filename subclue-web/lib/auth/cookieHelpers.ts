@@ -18,9 +18,9 @@ export async function setAuthCookies(session: {
     path    : '/'
   }
 
-  store.set(`sb-${projectId}-auth-token`, session.access_token,  {
-    ...common, maxAge: session.expires_in
-  })
+  // store.set(`sb-${projectId}-auth-token`, session.access_token,  {
+  //   ...common, maxAge: session.expires_in
+  // })
 
   store.set(`sb-${projectId}-refresh-token`, session.refresh_token, {
     ...common, maxAge: ONE_YEAR
