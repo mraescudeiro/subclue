@@ -1,9 +1,9 @@
 version: '3.8'
+
 services:
   db:
     image: supabase/postgres:15.1.0.147
-    ports:
-      - "5432:5432"
+    # removemos completamente a seção 'ports:' para não tentar mapear nenhuma porta
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
@@ -15,6 +15,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
   rest:
     image: supabase/postgrest:v10.0.0
     depends_on:
@@ -25,6 +26,7 @@ services:
       PGRST_DB_SCHEMA: public
     ports:
       - "3000:3000"
+
   storage:
     image: supabase/storage:v0.23.2
     depends_on:
@@ -35,6 +37,7 @@ services:
       STORAGE_BACKEND: file
     ports:
       - "5000:5000"
+
   auth:
     image: supabase/gotrue:v2.55.0
     depends_on:

@@ -1,30 +1,27 @@
-    // Local do arquivo: subclue-web/middleware.ts
-    import { NextResponse, type NextRequest } from 'next/server';
-    import { updateSession } from '@/utils/supabase/middleware'; // Importa nossa função centralizada
+// middleware.ts
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse }          from 'next/server'
+import type { NextRequest }      from 'next/server'
 
-    // A função DEVE se chamar 'middleware' e ser exportada.
-    export async function middleware(request: NextRequest) {
-      console.log(`[MAIN MIDDLEWARE] Path: ${request.nextUrl.pathname}. Chamando updateSession...`);
+export async function middleware(req: NextRequest) {
+  // resposta padrão que o Next vai continuar processando
+  const res = NextResponse.next()
 
-      // Chama a função updateSession, que agora lida com toda a lógica de sessão e redirecionamento.
-      // updateSession retornará uma NextResponse (seja um redirecionamento ou a continuação do fluxo).
-      const response = await updateSession(request);
+  // inicializa o client **específico para Middleware**
+  const supabase = createMiddlewareClient({ req, res })
 
-      console.log(`[MAIN MIDDLEWARE] Retornando resposta de updateSession.`);
-      return response;
-    }
+  // apenas isso já faz:
+  //  • ler os cookies
+  //  • renovar o access-token se o refresh ainda for válido
+  //  • regravar os novos cookies na resposta
+  await supabase.auth.getUser()
 
-    // O objeto de configuração do matcher permanece o mesmo.
-    export const config = {
-      matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - api (API routes)
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         */
-        '/((?!api|_next/static|_next/image|favicon.ico).*)',
-      ],
-    };
-    
+  return res
+}
+
+/** * Executa em todas as rotas que não sejam assets do Next */
+export const config = {
+  matcher: [
+    '/((?!_next/.*|favicon.ico).*)'
+  ],
+}

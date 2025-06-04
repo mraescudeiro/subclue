@@ -1,8 +1,91 @@
+# Este é o ID do seu projeto Supabase. Não deve ser alterado.
 project_id = "subclue"
 
+# Configurações para os serviços locais do Supabase.
+# As portas aqui devem corresponder às que você deseja usar localmente
+# e às que foram configuradas nas regras do seu firewall.
+[api]
+port = 54321
+# Limite máximo de linhas que podem ser retornadas em uma única requisição.
+max_rows = 1000
+
+[db]
+port = 54322
+# Configurações de sombreamento do banco de dados (opcional, para CI/CD ou testes)
+# shadow_db_port = 54320
+
+[studio]
+port = 54323
+# Nome da organização que aparece no Studio local.
+# organization_name = "Default Organization"
+# Nome do projeto que aparece no Studio local.
+# project_name = "Local Development"
+
+[inbucket]
+port = 54324
+# Domínio de e-mail usado pelo Inbucket para capturar e-mails localmente.
+# email_domain = "local.supabase.com"
+# Quando definido como true, o Inbucket usará TLS.
+# use_tls = false
+
+# Configurações de Autenticação
+# Estes valores foram ajustados para corresponder ao seu projeto na nuvem.
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+  [auth.mfa]
+  max_enrolled_factors = 10
+    [auth.mfa.totp]
+    enroll_enabled = true
+    verify_enabled = true
+    # issuer = "your-app-name" # Opcional: nome do emissor para apps TOTP
+    [auth.mfa.phone]
+    enroll_enabled = false
+    verify_enabled = false
+    # message_template = "Your verification code is {{ .Code }}"
+
+  [auth.email]
+  enable_signup = true
+  double_confirm_changes = true
+  enable_confirmations = true
+  secure_password_change = false
+  max_frequency = "1m0s"
+  otp_length = 6
+  otp_expiry = 86400
+    [auth.email.template]
+    # welcome_content_path = "supabase/templates/welcome_email.html" # Exemplo
+
+  [auth.sms]
+  enable_signup = false
+  # otp_length = 6
+  # otp_expiry = 60
+  # max_frequency = "1m0s"
+  # provider = "twilio" # Ex: twilio, vonage, textlocal, messagebird
+  #   [auth.sms.twilio]
+  #   account_sid = "ACxxxxxxxxxxxxxxx"
+  #   auth_token = "xxxxxxxxxxxxxxx"
+  #   message_service_sid = "MGxxxxxxxxxxxxxxx"
+
+# Configurações para suas Funções Supabase.
 [functions.list_produtos]
   # O entrypoint deve ser o caminho para o arquivo da função,
   # relativo ao diretório onde este config.toml reside (ou seja, supabase/).
   # Para alcançar supabase/functions/list_produtos/index.ts, o entrypoint será:
   entrypoint = "functions/list_produtos/index.ts"
   verify_jwt = false
+
+# [realtime]
+# enabled = true
+# port = 4000
+
+# [storage]
+# file_size_limit = "50MiB"
+
+# [analytics]
+# enabled = false
+# port = 4001
