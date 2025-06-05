@@ -2,13 +2,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+<<<<<<< ours
 import { createBrowserSupabase } from "../../../lib/createBrowserSupabase";
 
 const supabase = createBrowserSupabase();
+=======
+import { useAuth } from "@/lib/contexts/AuthContext";
+>>>>>>> theirs
 
 type Produto = { id: string; name: string; price: number };
 
 export default function PainelPage() {
+  const { supabase } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [error, setError] = useState<string | null>(null);
 

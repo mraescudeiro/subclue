@@ -1,0 +1,118 @@
+diff --git a/subclue-web/app/(auth)/signup/page.tsx b/subclue-web/app/(auth)/signup/page.tsx
+index 3acfb7550c046af5894d9187b1c3d578e1974c45..5e9b75e6d6fa644d45c609e50585ab00cb724253 100644
+--- a/subclue-web/app/(auth)/signup/page.tsx
++++ b/subclue-web/app/(auth)/signup/page.tsx
+@@ -1,36 +1,37 @@
+ 'use client';
+ 
+ import SignupSuccessModal from '@/components/SignupSuccessModal';
+ import React, { useState, useEffect } from 'react';
+ import Image from 'next/image';
+ import { FcGoogle } from "react-icons/fc";
+ import { FaApple } from "react-icons/fa";
+ import { cpf as cpfValidator } from 'cpf-cnpj-validator';
+-import { supabase } from '@/lib/supabaseClient';
++import { useAuth } from '@/lib/contexts/AuthContext';
+ 
+ export default function SignupPage() {
++  const { supabase } = useAuth();
+   const [userType, setUserType] = useState<'cliente' | 'empresa'>('cliente');
+   const [email, setEmail] = useState('');
+   const [senha, setSenha] = useState('');
+   const [senha2, setSenha2] = useState('');
+   const [senhaError, setSenhaError] = useState('');
+   const [isLoading, setIsLoading] = useState(false);
+   const [formError, setFormError] = useState('');
+   const [successMessage, setSuccessMessage] = useState('');
+   const [modalOpen, setModalOpen] = useState(false);
+ 
+   const [nome, setNome] = useState('');
+   const [cpf, setCpf] = useState('');
+   const [cpfTouched, setCpfTouched] = useState(false);
+   const [cpfError, setCpfError] = useState('');
+   const [dataNasc, setDataNasc] = useState('');
+ 
+   const [responsavel, setResponsavel] = useState('');
+   const [nomeEmpresa, setNomeEmpresa] = useState('');
+   const [cnpj, setCnpj] = useState('');
+   const [cnpjError, setCnpjError] = useState('');
+   const [telefone, setTelefone] = useState('');
+   const [website, setWebsite] = useState('');
+ 
+   useEffect(() => {
+     if (!supabase) {
+diff --git a/subclue-web/app/(mainApp)/painel/page.tsx b/subclue-web/app/(mainApp)/painel/page.tsx
+index 9220fd3036e5f40c01ac06a4fbb6a0b4db25cf52..cd94895d8cf8270c2c28cf28c22de4bfb723675a 100644
+--- a/subclue-web/app/(mainApp)/painel/page.tsx
++++ b/subclue-web/app/(mainApp)/painel/page.tsx
+@@ -1,33 +1,34 @@
+ // subclue‑web/app/painel/page.tsx
+ "use client";
+ 
+ import { useEffect, useState } from "react";
+-import { supabase } from "../../../lib/supabaseClient";
++import { useAuth } from "@/lib/contexts/AuthContext";
+ 
+ type Produto = { id: string; name: string; price: number };
+ 
+ export default function PainelPage() {
++  const { supabase } = useAuth();
+   const [produtos, setProdutos] = useState<Produto[]>([]);
+   const [error, setError] = useState<string | null>(null);
+ 
+   useEffect(() => {
+     supabase.functions
+       .invoke<Produto[]>("list_produtos")
+       .then(({ data, error }) => {
+         if (error) setError(error.message);
+         else setProdutos(data || []);
+       });
+   }, []);
+ 
+   return (
+     <div className="p-8">
+       <h1 className="text-2xl font-bold">Meus Produtos</h1>
+       {error && <p className="text-red-600">Erro: {error}</p>}
+       <ul>
+         {produtos.map((p) => (
+           <li key={p.id}>{p.name} — R$ {p.price}</li>
+         ))}
+       </ul>
+     </div>
+   );
+ }
+diff --git a/subclue-web/lib/supabaseClient.ts b/subclue-web/lib/supabaseClient.ts
+deleted file mode 100644
+index ac899b91a54c164c3416b777a8f8dd4a3f85a417..0000000000000000000000000000000000000000
+--- a/subclue-web/lib/supabaseClient.ts
++++ /dev/null
+@@ -1,28 +0,0 @@
+-// subclue-web/lib/supabaseClient.ts
+-
+-// import { createClient } from '@supabase/supabase-js' // Comentado - não vamos criar um cliente global aqui
+-// import type { Database } from './database.types' // Tipos gerados pelo Supabase - pode ser útil manter se outros arquivos importarem daqui
+-
+-// Obtenha as variáveis de ambiente
+-// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+-// const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+-
+-// if (!supabaseUrl) {
+-//   throw new Error('A variável de ambiente NEXT_PUBLIC_SUPABASE_URL não está definida.')
+-// }
+-// if (!supabaseAnonKey) {
+-//   throw new Error('A variável de ambiente NEXT_PUBLIC_SUPABASE_ANON_KEY não está definida.')
+-// }
+-
+-// A criação do cliente foi movida/centralizada no AuthContext.tsx para o lado do cliente (usando createBrowserClient)
+-// e em Server Components/Actions (usando createServerClient).
+-// Este arquivo não deve mais exportar uma instância de cliente para evitar múltiplas instâncias.
+-// export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey) // <<== COMENTADO E REMOVIDO
+-
+-// Você pode usar este arquivo para reexportar tipos ou outras constantes/utilitários do Supabase, se desejar.
+-// Exemplo:
+-// export type { Database } from './database.types';
+-
+-// Se este arquivo não tiver mais nenhum outro propósito, você poderá até mesmo deletá-lo no futuro,
+-// após garantir que nenhum outro arquivo esteja tentando importar 'supabase' dele.
+-// Por enquanto, deixar comentado é seguro.
+\ No newline at end of file
