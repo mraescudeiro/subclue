@@ -19,6 +19,7 @@ logs/ # Se você tiver uma pasta de logs na raiz
 # Se você tiver um arquivo .env.example para mostrar a estrutura,
 # você pode adicionar uma linha como: !subclue-web/.env.example
 # para NÃO ignorá-lo e versioná-lo.
+!.env.example
 .env
 .env*
 # Exemplos mais específicos de arquivos .env (geralmente ignorados):

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Cria o client Admin
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseUrl = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SERVICE_ROLE_KEY")!;
 const sb = createClient(supabaseUrl, supabaseKey, { global: { fetch } });
 
