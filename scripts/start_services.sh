@@ -21,7 +21,7 @@ make reset-db
 
 # 3) Create fixed test user via Admin REST API
 echo "🛠️  Criando usuário de teste (test@subclue.io)…"
-curl -s -X POST "${SUPABASE_URL}/auth/v1/admin/users" \
+curl -s -X POST "${NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users" \
   -H "Content-Type: application/json" \
   -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
   -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
@@ -33,8 +33,8 @@ curl -s -X POST "${SUPABASE_URL}/auth/v1/admin/users" \
 
 # 4) Generate JWT using Auth REST API
 echo "🔑 Gerando JWT para o usuário de teste…"
-TOKEN_RESPONSE=$(curl -s -X POST "${SUPABASE_URL}/auth/v1/token" \
-  -H "apikey: ${SUPABASE_ANON_KEY}" \
+TOKEN_RESPONSE=$(curl -s -X POST "${NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token" \
+  -H "apikey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "grant_type": "password",

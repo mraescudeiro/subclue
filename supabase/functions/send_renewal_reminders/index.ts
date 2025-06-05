@@ -7,10 +7,10 @@ serve(async (_req) => {
   console.log("[Info] Requisição recebida em send_renewal_reminders.");
 
   // 1) Cria o client Admin (service role)
-  const supabaseUrl        = Deno.env.get("SUPABASE_URL");
+  const supabaseUrl        = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SERVICE_ROLE_KEY");
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error("[Erro] SUPABASE_URL ou SERVICE_ROLE_KEY não definidas.");
+    console.error("[Erro] NEXT_PUBLIC_SUPABASE_URL ou SERVICE_ROLE_KEY não definidas.");
     return new Response(
       JSON.stringify({ message: "Configuração de ambiente incompleta." }),
       { status: 500 },

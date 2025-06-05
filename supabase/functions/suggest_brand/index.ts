@@ -75,8 +75,8 @@ serve(async (req) => {
 
   // Cria cliente Supabase (com role do usuário)
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
+    Deno.env.get("NEXT_PUBLIC_SUPABASE_URL")!,
+    Deno.env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: `Bearer ${jwt}` } } }
   );
 
