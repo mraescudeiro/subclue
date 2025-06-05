@@ -6,13 +6,7 @@ import Image from 'next/image';
 import { FcGoogle } from "react-icons/fc";
 import { FaApple } from "react-icons/fa";
 import { cpf as cpfValidator } from 'cpf-cnpj-validator';
-<<<<<<< ours
-import { createBrowserSupabase } from '@/lib/createBrowserSupabase';
-
-const supabase = createBrowserSupabase();
-=======
 import { useAuth } from '@/lib/contexts/AuthContext';
->>>>>>> theirs
 
 export default function SignupPage() {
   const { supabase } = useAuth();

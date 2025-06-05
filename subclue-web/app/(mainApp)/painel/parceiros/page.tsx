@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/contexts/AuthContext'; // Verifique o caminho
 
 // Remova a importação e uso do Header.tsx diretamente aqui
 export default function PainelParceiroDashboard() {
-  const { user, isLoading: authLoading } = useAuth(); // isLoading do AuthContext
+  const { user, isLoadingSession: authLoading } = useAuth(); // isLoading do AuthContext
 
   console.log('[PainelParceiroDashboard] user:', user?.id, 'isLoading:', authLoading);
 
