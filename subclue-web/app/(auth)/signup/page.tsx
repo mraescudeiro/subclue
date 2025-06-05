@@ -6,7 +6,9 @@ import Image from 'next/image';
 import { FcGoogle } from "react-icons/fc";
 import { FaApple } from "react-icons/fa";
 import { cpf as cpfValidator } from 'cpf-cnpj-validator';
-import { supabase } from '@/lib/supabaseClient';
+import { createBrowserSupabase } from '@/lib/createBrowserSupabase';
+
+const supabase = createBrowserSupabase();
 
 export default function SignupPage() {
   const [userType, setUserType] = useState<'cliente' | 'empresa'>('cliente');
