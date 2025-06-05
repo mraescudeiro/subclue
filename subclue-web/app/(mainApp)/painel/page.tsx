@@ -2,11 +2,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 type Produto = { id: string; name: string; price: number };
 
 export default function PainelPage() {
+  const { supabase } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
