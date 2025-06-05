@@ -77,3 +77,4 @@ node_modules
 *.save
 codex.patch
 supabase/volumes/db/data/
+*.patch
