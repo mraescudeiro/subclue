@@ -18,10 +18,12 @@ export default function LoginPage() {
   const {
     signInWithPassword,    // ← alterado aqui
     supabase,
-    isLoading,
-    serverSessionError,
-    setServerSessionError,
+    isLoadingSession,
+    authError,
+    clearAuthError,
   } = useAuth();
+
+  const isLoading = isLoadingSession;
 
   const [tipo,  setTipo]  = useState<'cliente' | 'empresa'>('cliente');
   const [email, setEmail] = useState('');
@@ -30,14 +32,14 @@ export default function LoginPage() {
 
   /* exibe erro vindo do contexto */
   useEffect(() => {
-    if (serverSessionError) setLocalErro(serverSessionError);
-  }, [serverSessionError]);
+    if (authError) setLocalErro(authError.message);
+  }, [authError]);
 
   /* ------------------ login e-mail/senha ------------------ */
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLocalErro('');
-    if (serverSessionError) setServerSessionError(null);
+    if (authError) clearAuthError();
 
     if (!email || !senha) {
       setLocalErro('E-mail e senha são obrigatórios.');
@@ -51,7 +53,7 @@ export default function LoginPage() {
   /* ------------------ login social ------------------ */
   const handleSocialLogin = async (provider: 'google' | 'apple') => {
     setLocalErro('');
-    if (serverSessionError) setServerSessionError(null);
+    if (authError) clearAuthError();
 
     if (!supabase) {
       setLocalErro('Erro ao iniciar login social: cliente não disponível.');
@@ -68,7 +70,10 @@ export default function LoginPage() {
       },
     });
 
-    if (error) setServerSessionError(`Erro com ${provider}: ${error.message}`);
+    if (error) {
+      clearAuthError();
+      setLocalErro(`Erro com ${provider}: ${error.message}`);
+    }
   };
 
   /* ------------------ UI ------------------ */
@@ -110,9 +115,9 @@ export default function LoginPage() {
           </div>
 
           {/* erros */}
-          {(localErro || serverSessionError) && (
+          {(localErro || authError) && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded mb-4 text-center text-sm">
-              {localErro || serverSessionError}
+              {localErro || authError?.message}
             </div>
           )}
 

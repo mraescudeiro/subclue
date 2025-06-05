@@ -12,23 +12,23 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles = [] }) => { // Default para array vazio
-  const { user, isLoading, userRole, isLoadingRole, serverSessionError } = useAuth();
+  const { user, isLoadingSession, userRole, isLoadingRole, authError } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     console.log('[ProtectedRoute] useEffect Check:', {
-      isLoading,
+      isLoading: isLoadingSession,
       isLoadingRole,
       user: !!user,
       userId: user?.id,
       userRole,
-      serverSessionError,
+      authError,
       passedAllowedRoles: allowedRoles, // Log para ver o que está sendo passado
       pathname: typeof window !== 'undefined' ? window.location.pathname : ''
     });
 
-    if (!isLoading && !isLoadingRole) {
-      if (!user || serverSessionError) {
+    if (!isLoadingSession && !isLoadingRole) {
+      if (!user || authError) {
         console.log('[ProtectedRoute] No user or serverSessionError. Redirecting to /login.');
         router.replace('/login');
       } else if (allowedRoles && allowedRoles.length > 0) { // Só checar papéis se allowedRoles for fornecido e não vazio
@@ -43,15 +43,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
       // Se allowedRoles for um array vazio ou não fornecido, e o usuário estiver logado, permite o acesso.
       // (Pode ajustar essa lógica se rotas protegidas sempre exigirem pelo menos um papel).
     }
-  }, [user, isLoading, userRole, isLoadingRole, allowedRoles, router, serverSessionError]);
+  }, [user, isLoadingSession, userRole, isLoadingRole, allowedRoles, router, authError]);
 
-  if (isLoading || isLoadingRole) {
-    console.log('[ProtectedRoute] Showing LoadingScreen:', { isLoading, isLoadingRole });
+  if (isLoadingSession || isLoadingRole) {
+    console.log('[ProtectedRoute] Showing LoadingScreen:', { isLoading: isLoadingSession, isLoadingRole });
     return <LoadingScreen />;
   }
 
   // Condição final para renderizar ou não
-  if (!user || serverSessionError) {
+  if (!user || authError) {
     console.log('[ProtectedRoute] Final check: No user or serverSessionError. Not rendering children.');
     return <LoadingScreen />;
   }
