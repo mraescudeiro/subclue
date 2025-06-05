@@ -3,21 +3,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // 🍀 solução 1 — simples
-    domains: [
-      'res.cloudinary.com',          // Cloudinary
-      'lh3.googleusercontent.com'    // Google avatars
-    ],
-
-    /*  🍀 solução 2 — alternativa (remotePatterns)
-        Se preferir, comente o bloco "domains" e
-        use isso — mais flexível para caminhos específicos.
-
+    // Using remotePatterns avoids warnings about the deprecated "images.domains"
+    // property and allows more specific configuration.
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-        pathname: '/**',             // qualquer pasta/arquivo
+        pathname: '/**', // qualquer pasta/arquivo
       },
       {
         protocol: 'https',
@@ -25,7 +17,6 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
-    */
   },
 };
 
