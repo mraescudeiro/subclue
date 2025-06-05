@@ -1,9 +1,9 @@
-// lib/createServerSupabase.ts
+// lib/supabase/server.ts
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 
-export async function createServerSupabase() {
+export async function createSupabaseServerClient() {
   const store   = await cookies() // ✅ obrigatório aguardar
   const access  = store.get('sb-access-token')?.value
   const supabase = createClient<Database>(

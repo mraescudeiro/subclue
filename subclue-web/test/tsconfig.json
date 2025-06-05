@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["../lib/supabase/server.ts", "./serverClient.test.ts", "./next.d.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "moduleResolution": "node16"
+  }
+}

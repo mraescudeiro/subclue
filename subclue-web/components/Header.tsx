@@ -1,11 +1,11 @@
 // components/Header.tsx
 import HeaderClient from './HeaderClient'
-import { createServerSupabase } from '@/lib/createServerSupabase'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { User } from '@supabase/supabase-js'
 
 export default async function Header() {
   /** pega o client já configurado */
-  const { supabase } = await createServerSupabase()
+  const { supabase } = await createSupabaseServerClient()
 
   /* ---------------------------------------------------------- */
   let user: User | null       = null

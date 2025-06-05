@@ -1,7 +1,7 @@
 // subclue-web/app/api/parceiro/produtos/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/createServerSupabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/database.types';
 // import { планы } from '@supabase/gotrue-js/dist/module/lib/types'; // Certifique-se que esta importação é necessária ou remova-a se não for.
 
@@ -39,7 +39,7 @@ const parseTags = (tagsString: string | null): string[] | null => {
 };
 
 export async function POST(request: NextRequest) {
-  const { supabase } = await createServerSupabase();
+  const { supabase } = await createSupabaseServerClient();
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session?.user) {

@@ -1,0 +1,172 @@
+diff --git a/subclue-web/app/(auth)/signup/page.tsx b/subclue-web/app/(auth)/signup/page.tsx
+index 3acfb7550c046af5894d9187b1c3d578e1974c45..ed48b423384f06870bbcf68880e61837037c6422 100644
+--- a/subclue-web/app/(auth)/signup/page.tsx
++++ b/subclue-web/app/(auth)/signup/page.tsx
+@@ -1,34 +1,36 @@
+ 'use client';
+ 
+ import SignupSuccessModal from '@/components/SignupSuccessModal';
+ import React, { useState, useEffect } from 'react';
+ import Image from 'next/image';
+ import { FcGoogle } from "react-icons/fc";
+ import { FaApple } from "react-icons/fa";
+ import { cpf as cpfValidator } from 'cpf-cnpj-validator';
+-import { supabase } from '@/lib/supabaseClient';
++import { createBrowserSupabase } from '@/lib/createBrowserSupabase';
++
++const supabase = createBrowserSupabase();
+ 
+ export default function SignupPage() {
+   const [userType, setUserType] = useState<'cliente' | 'empresa'>('cliente');
+   const [email, setEmail] = useState('');
+   const [senha, setSenha] = useState('');
+   const [senha2, setSenha2] = useState('');
+   const [senhaError, setSenhaError] = useState('');
+   const [isLoading, setIsLoading] = useState(false);
+   const [formError, setFormError] = useState('');
+   const [successMessage, setSuccessMessage] = useState('');
+   const [modalOpen, setModalOpen] = useState(false);
+ 
+   const [nome, setNome] = useState('');
+   const [cpf, setCpf] = useState('');
+   const [cpfTouched, setCpfTouched] = useState(false);
+   const [cpfError, setCpfError] = useState('');
+   const [dataNasc, setDataNasc] = useState('');
+ 
+   const [responsavel, setResponsavel] = useState('');
+   const [nomeEmpresa, setNomeEmpresa] = useState('');
+   const [cnpj, setCnpj] = useState('');
+   const [cnpjError, setCnpjError] = useState('');
+   const [telefone, setTelefone] = useState('');
+   const [website, setWebsite] = useState('');
+ 
+diff --git a/subclue-web/app/(mainApp)/painel/page.tsx b/subclue-web/app/(mainApp)/painel/page.tsx
+index 9220fd3036e5f40c01ac06a4fbb6a0b4db25cf52..12e244557a49395a1ef727011e7153f27f9075df 100644
+--- a/subclue-web/app/(mainApp)/painel/page.tsx
++++ b/subclue-web/app/(mainApp)/painel/page.tsx
+@@ -1,30 +1,32 @@
+ // subclue‑web/app/painel/page.tsx
+ "use client";
+ 
+ import { useEffect, useState } from "react";
+-import { supabase } from "../../../lib/supabaseClient";
++import { createBrowserSupabase } from "../../../lib/createBrowserSupabase";
++
++const supabase = createBrowserSupabase();
+ 
+ type Produto = { id: string; name: string; price: number };
+ 
+ export default function PainelPage() {
+   const [produtos, setProdutos] = useState<Produto[]>([]);
+   const [error, setError] = useState<string | null>(null);
+ 
+   useEffect(() => {
+     supabase.functions
+       .invoke<Produto[]>("list_produtos")
+       .then(({ data, error }) => {
+         if (error) setError(error.message);
+         else setProdutos(data || []);
+       });
+   }, []);
+ 
+   return (
+     <div className="p-8">
+       <h1 className="text-2xl font-bold">Meus Produtos</h1>
+       {error && <p className="text-red-600">Erro: {error}</p>}
+       <ul>
+         {produtos.map((p) => (
+           <li key={p.id}>{p.name} — R$ {p.price}</li>
+         ))}
+       </ul>
+diff --git a/subclue-web/lib/contexts/AuthContext.tsx b/subclue-web/lib/contexts/AuthContext.tsx
+index 8c9694f73be9b52a4b0028909cd2370e0c21a6a9..69d856857871bde34a4a240ce4f4d8d058cd9680 100644
+--- a/subclue-web/lib/contexts/AuthContext.tsx
++++ b/subclue-web/lib/contexts/AuthContext.tsx
+@@ -1,70 +1,70 @@
+ // lib/contexts/AuthContext.tsx
+ 'use client';
+ 
+ import React, {
+   createContext,
+   useContext,
+   useEffect,
+   useState,
+   useCallback,
+   useMemo,
+   type ReactNode,
+ } from 'react';
+ import { useRouter } from 'next/navigation';
+-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
++import { createBrowserSupabase } from '@/lib/createBrowserSupabase';
+ import type {
+   User,
+   Session,
+   AuthChangeEvent,
+   SupabaseClient,
+ } from '@supabase/supabase-js';
+ import type { Database } from '@/lib/database.types';
+ 
+ interface AuthContextType {
+   supabase: SupabaseClient<Database>;
+   user: User | null;
+   session: Session | null;
+   accessToken: string | null;
+   isLoadingSession: boolean;
+   userRole: string | null;
+   isLoadingRole: boolean;
+   authError: { message: string } | null;
+   signInWithPassword: (email: string, password: string) => Promise<void>;
+   signOut: () => Promise<void>;
+   clearAuthError: () => void;
+ }
+ 
+ const AuthContext = createContext<AuthContextType | undefined>(undefined);
+ 
+ interface AuthProviderProps {
+   children: ReactNode;
+ }
+ 
+ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+   const router = useRouter();
+-  const [supabase] = useState(() => createSupabaseBrowserClient());
++  const [supabase] = useState(() => createBrowserSupabase());
+ 
+   const [user, setUser] = useState<User | null>(null);
+   const [session, setSession] = useState<Session | null>(null);
+   const [accessToken, setAccessToken] = useState<string | null>(null);
+   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
+   const [authError, setAuthError] = useState<{ message: string } | null>(null);
+   const [userRole, setUserRole] = useState<string | null>(null);
+   const [isLoadingRole, setIsLoadingRole] = useState<boolean>(false);
+ 
+   const clearAuthError = useCallback(() => {
+     setAuthError(null);
+   }, []);
+ 
+   const signInWithPassword = useCallback(async (email: string, password: string) => {
+     clearAuthError();
+     setIsLoadingSession(true);
+ 
+     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+ 
+     if (error) {
+       setAuthError({ message: error.message });
+     } else {
+       setUser(data.user ?? null);
+       setSession(data.session ?? null);
+       setAccessToken(data.session?.access_token ?? null);
+diff --git a/subclue-web/lib/createBrowserSupabase.ts b/subclue-web/lib/createBrowserSupabase.ts
+index c4f974b40d6233c5dc649ed9f421cd56b3dc9424..61405aed660919d7b77c04c2343ebd5013e774d6 100644
+--- a/subclue-web/lib/createBrowserSupabase.ts
++++ b/subclue-web/lib/createBrowserSupabase.ts
+@@ -1 +1,9 @@
+-import { createBrowserSupabase } from '@/lib/createBrowserSupabase'
++import { createBrowserClient } from '@supabase/ssr';
++import type { Database } from './database.types';
++
++export function createBrowserSupabase() {
++  return createBrowserClient<Database>(
++    process.env.NEXT_PUBLIC_SUPABASE_URL!,
++    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
++  );
++}

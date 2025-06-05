@@ -1,0 +1,243 @@
+diff --git a/scripts/check_supabase_export.sh b/scripts/check_supabase_export.sh
+new file mode 100755
+index 0000000000000000000000000000000000000000..e7079ee98ca02f1bfe6323e8b13773b6a25f9a2a
+--- /dev/null
++++ b/scripts/check_supabase_export.sh
+@@ -0,0 +1,3 @@
++#!/bin/sh
++# Fails if the expected export is not found
++grep -q "export async function createSupabaseServerClient" subclue-web/lib/supabase/server.ts
+diff --git a/subclue-web/app/actions/auth.ts b/subclue-web/app/actions/auth.ts
+index 7815119484df5b2f846a6ab0fc7530d3e5308b95..5399e27a073b4b34a028eab92feac9225d091e07 100644
+--- a/subclue-web/app/actions/auth.ts
++++ b/subclue-web/app/actions/auth.ts
+@@ -1,25 +1,25 @@
+ 'use server'
+ 
+ import { redirect } from 'next/navigation'
+-import { createServerSupabase } from '@/lib/createServerSupabase'
++import { createSupabaseServerClient } from '@/lib/supabase/server'
+ import { setAuthCookies, clearAuthCookies } from '@/lib/auth/cookieHelpers'
+ 
+ export async function signInWithPasswordAction(
+   email: string,
+   password: string
+ ) {
+-  const { supabase } = await createServerSupabase()
++  const { supabase } = await createSupabaseServerClient()
+   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+ 
+   if (error) throw new Error(error.message)
+ 
+   await setAuthCookies(data.session!)
+   redirect('/')                       // ou retorne algo se preferir
+ }
+ 
+ export async function signOutAction() {
+-  const { supabase } = await createServerSupabase()
++  const { supabase } = await createSupabaseServerClient()
+   await supabase.auth.signOut()
+   await clearAuthCookies()
+   redirect('/login')
+ }
+diff --git a/subclue-web/app/api/parceiro/produtos/route.ts b/subclue-web/app/api/parceiro/produtos/route.ts
+index d1772aefc7e3c2b3464154e5f3b55dba8ad1409d..f9c0287a60a9c66e9e5cbac18e452d272fa08be6 100644
+--- a/subclue-web/app/api/parceiro/produtos/route.ts
++++ b/subclue-web/app/api/parceiro/produtos/route.ts
+@@ -1,67 +1,67 @@
+ // subclue-web/app/api/parceiro/produtos/route.ts
+ 
+ import { NextRequest, NextResponse } from 'next/server';
+-import { createServerSupabase } from '@/lib/createServerSupabase';
++import { createSupabaseServerClient } from '@/lib/supabase/server';
+ import type { Database } from '@/lib/database.types';
+ // import { планы } from '@supabase/gotrue-js/dist/module/lib/types'; // Certifique-se que esta importação é necessária ou remova-a se não for.
+ 
+ // Tipos Insert para as tabelas (assumindo que database.types.ts está atualizado)
+ type ProdutoInsert = Database['public']['Tables']['produtos']['Insert'];
+ type PeriodoInsert = Database['public']['Tables']['periodos']['Insert'];
+ type PlanoProdutoInsert = Database['public']['Tables']['planos_produto']['Insert'];
+ type ProdutoImagemInsert = Database['public']['Tables']['produto_imagens']['Insert'];
+ type ProductCategoryInsert = Database['public']['Tables']['product_categories']['Insert'];
+ type RegraFreteProdutoInsert = Database['public']['Tables']['regras_frete_produto']['Insert'];
+ 
+ // Helper para converter string para número ou null
+ const safeParseFloat = (value: string | null): number | null => {
+   if (value === null || value.trim() === '') return null;
+   const normalized = value.replace('.', '').replace(',', '.');
+   const num = parseFloat(normalized);
+   return isNaN(num) ? null : num;
+ };
+ 
+ const safeParseInt = (value: string | null): number | null => {
+   if (value === null || value.trim() === '') return null;
+   const num = parseInt(value, 10);
+   return isNaN(num) ? null : num;
+ };
+ 
+ // Helper para converter string para booleano
+ const safeParseBoolean = (value: string | null): boolean => {
+   return value === 'true';
+ };
+ 
+ // Helper para converter string de tags para array de texto
+ const parseTags = (tagsString: string | null): string[] | null => {
+   if (!tagsString || tagsString.trim() === '') return null;
+   return tagsString.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
+ };
+ 
+ export async function POST(request: NextRequest) {
+-  const { supabase } = await createServerSupabase();
++  const { supabase } = await createSupabaseServerClient();
+ 
+   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+   if (sessionError || !session?.user) {
+     return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 });
+   }
+   const userId = session.user.id;
+ 
+   const { data: parceiroData, error: parceiroError } = await supabase
+     .from('parceiros')
+     .select('id')
+     .eq('owner_id', userId)
+     .single();
+ 
+   if (parceiroError || !parceiroData) {
+     return NextResponse.json({ error: 'Parceiro não encontrado para este usuário.' }, { status: 404 });
+   }
+   const parceiroId = parceiroData.id;
+ 
+   const formData = await request.formData();
+ 
+   // --- Extração de Dados do FormData ---
+   const titulo = formData.get('titulo') as string | null;
+   const slug = formData.get('slug') as string | null;
+   const descricaoCurta = formData.get('descricaoCurta') as string | null;
+   const descricaoCompleta = formData.get('descricaoCompleta') as string | null;
+diff --git a/subclue-web/components/Header.tsx b/subclue-web/components/Header.tsx
+index 8f3bb8f674ec352d5253345ba6f33b73bb636e5c..ec561660d378f333dbcd06238d811202d5e2b807 100644
+--- a/subclue-web/components/Header.tsx
++++ b/subclue-web/components/Header.tsx
+@@ -1,33 +1,33 @@
+ // components/Header.tsx
+ import HeaderClient from './HeaderClient'
+-import { createServerSupabase } from '@/lib/createServerSupabase'
++import { createSupabaseServerClient } from '@/lib/supabase/server'
+ import type { User } from '@supabase/supabase-js'
+ 
+ export default async function Header() {
+   /** pega o client já configurado */
+-  const { supabase } = await createServerSupabase()
++  const { supabase } = await createSupabaseServerClient()
+ 
+   /* ---------------------------------------------------------- */
+   let user: User | null       = null
+   let sessionError: string | null = null
+ 
+   try {
+     const { data, error } = await supabase.auth.getUser()
+     if (error) {
+       if (error.name !== 'AuthSessionMissingError') {
+         console.error('[Header RSC] supabase.auth.getUser():', error.message)
+         sessionError = error.message
+       }
+     } else {
+       user = data.user ?? null
+     }
+   } catch (e: any) {
+     console.error('[Header RSC] erro inesperado:', e.message)
+     sessionError = e.message
+   }
+   /* ---------------------------------------------------------- */
+ 
+   return (
+     <HeaderClient
+       initialUser={user}
+       initialServerSessionError={sessionError}
+diff --git a/subclue-web/lib/createServerSupabase.ts b/subclue-web/lib/createServerSupabase.ts
+deleted file mode 100644
+index b56ae5da96c45a2543ab191d84b1b861a886e5a8..0000000000000000000000000000000000000000
+--- a/subclue-web/lib/createServerSupabase.ts
++++ /dev/null
+@@ -1,14 +0,0 @@
+-// lib/createServerSupabase.ts
+-import { cookies } from 'next/headers';
+-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'; // Importe o helper correto
+-import type { Database } from '@/lib/database.types';
+-
+-export async function createServerSupabase() {
+-  const cookieStore = await cookies(); // `cookies()` é assíncrono no App Router
+-  const supabase = createRouteHandlerClient<Database>({
+-    cookies: () => cookieStore, // Forneça a cookie store para o helper
+-  });
+-  // O createRouteHandlerClient já lida com a leitura da sessão a partir dos cookies.
+-  // Não é necessário chamar setSession() manualmente aqui.
+-  return { supabase };
+-}
+\ No newline at end of file
+diff --git a/subclue-web/lib/supabase/server.ts b/subclue-web/lib/supabase/server.ts
+index 30f3cc2ddd338896ad9456dd6d94fa054778f6b6..17cbd1d9b7a1b66248b9b568062623a1f597f622 100644
+--- a/subclue-web/lib/supabase/server.ts
++++ b/subclue-web/lib/supabase/server.ts
+@@ -1,19 +1,19 @@
+-// lib/createServerSupabase.ts
++// lib/supabase/server.ts
+ import { cookies } from 'next/headers'
+ import { createClient } from '@supabase/supabase-js'
+ import type { Database } from '@/lib/database.types'
+ 
+-export async function createServerSupabase() {
++export async function createSupabaseServerClient() {
+   const store   = await cookies() // ✅ obrigatório aguardar
+   const access  = store.get('sb-access-token')?.value
+   const supabase = createClient<Database>(
+     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+     {
+       auth: { persistSession: false },
+       global: access ? { headers: { Authorization: `Bearer ${access}` } } : {}
+     }
+   )
+ 
+   return { supabase, store }
+ }
+diff --git a/subclue-web/test/next.d.ts b/subclue-web/test/next.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..67f01b64f77a8efd42a73db6db9af6b791eea68e
+--- /dev/null
++++ b/subclue-web/test/next.d.ts
+@@ -0,0 +1,3 @@
++declare module 'next/headers' {
++  export function cookies(): any;
++}
+diff --git a/subclue-web/test/serverClient.test.ts b/subclue-web/test/serverClient.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..58e58c93ff7a32e4d249f85fa7ccf1d511a30585
+--- /dev/null
++++ b/subclue-web/test/serverClient.test.ts
+@@ -0,0 +1,9 @@
++import { createSupabaseServerClient } from '../lib/supabase/server';
++
++// Simple type check: ensure function returns Promise with supabase property
++async function check() {
++  const { supabase } = await createSupabaseServerClient();
++  console.log(typeof supabase);
++}
++
++check();
+diff --git a/subclue-web/test/tsconfig.json b/subclue-web/test/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..a81453ff14d18bb5566d635816b4b22a752bfb7e
+--- /dev/null
++++ b/subclue-web/test/tsconfig.json
+@@ -0,0 +1,10 @@
++{
++  "extends": "../tsconfig.json",
++  "include": ["../lib/supabase/server.ts", "./serverClient.test.ts", "./next.d.ts"],
++  "compilerOptions": {
++    "noEmit": true,
++    "skipLibCheck": true,
++    "types": ["node"],
++    "moduleResolution": "node16"
++  }
++}
