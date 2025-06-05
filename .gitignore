@@ -56,6 +56,7 @@ subclue-web/*.tsbuildinfo # tsbuildinfo gerado dentro de subclue-web
 
 # --- Supabase (assumindo uma pasta 'supabase/' na raiz 'subclue/') ---
 supabase/temp/
+supabase/.temp/
 supabase/volumes/ # Dados do Docker para o banco local, se usado
 supabase/functions/_temp/ # Arquivos temporários de build das Edge Functions
 supabase/.branches/ # Para o recurso de branches locais da Supabase CLI
