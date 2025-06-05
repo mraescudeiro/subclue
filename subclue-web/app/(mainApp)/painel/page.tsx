@@ -2,7 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { createBrowserSupabase } from "../../../lib/createBrowserSupabase";
+
+const supabase = createBrowserSupabase();
 
 type Produto = { id: string; name: string; price: number };
 

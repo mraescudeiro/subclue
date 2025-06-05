@@ -11,7 +11,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createBrowserSupabase } from '@/lib/createBrowserSupabase';
 import type {
   User,
   Session,
@@ -42,7 +42,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
-  const [supabase] = useState(() => createSupabaseBrowserClient());
+  const [supabase] = useState(() => createBrowserSupabase());
 
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
