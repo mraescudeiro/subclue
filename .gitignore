@@ -75,3 +75,4 @@ node_modules
 # Backups locais ou pastas temporárias
 /.#1#Backup/
 *.save
+codex.patch
