@@ -125,6 +125,27 @@ export async function POST(request: NextRequest) {
   const descricaoSeo = formData.get('descricaoSeo') as string | null;
   const palavrasChaveSeo = formData.get('palavrasChaveSeo') as string | null;
 
+  // --- Novos campos para atributos e variantes ---
+  const tamanhosRaw = formData.get('tamanhos') as string | null;
+  const coresRaw = formData.get('cores') as string | null;
+
+  let tamanhos: Array<{ valor: string }> = [];
+  let cores: Array<{ nome: string; hex?: string }> = [];
+  try {
+    if (tamanhosRaw) {
+      tamanhos = JSON.parse(tamanhosRaw);
+    }
+  } catch (e) {
+    console.warn('Falha ao parsear tamanhos JSON:', e);
+  }
+  try {
+    if (coresRaw) {
+      cores = JSON.parse(coresRaw);
+    }
+  } catch (e) {
+    console.warn('Falha ao parsear cores JSON:', e);
+  }
+
 
   // --- Validação Básica Obrigatória ---
   if (!titulo || !slug || !descricaoCompleta || !precoString || !planoAssinaturaBase || !intervaloEntregaForm || !modoEntrega) {
@@ -371,6 +392,68 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         console.error("Erro ao processar tabela de frete JSON:", e);
         // Decidir se isso deve ser um erro fatal ou um aviso
+      }
+    }
+
+    // 7. Inserir Atributos, Valores e Variantes
+    if (tamanhos.length > 0 || cores.length > 0) {
+      const atributosPayload: Array<{ produto_id: string; nome: string }> = [];
+      if (tamanhos.length > 0) atributosPayload.push({ produto_id: novoProdutoId, nome: 'Tamanho' });
+      if (cores.length > 0) atributosPayload.push({ produto_id: novoProdutoId, nome: 'Cor' });
+
+      const { data: attrs, error: attrsError } = await supabase
+        .from('produto_atributos')
+        .insert(atributosPayload)
+        .select('id, nome');
+      if (attrsError) throw attrsError;
+
+      let atributoTamanhoId: string | null = null;
+      let atributoCorId: string | null = null;
+      attrs?.forEach(a => {
+        if (a.nome === 'Tamanho') atributoTamanhoId = a.id;
+        if (a.nome === 'Cor') atributoCorId = a.id;
+      });
+
+      const valoresPayload: Array<{ atributo_id: string; valor: string }> = [];
+      if (atributoTamanhoId) {
+        tamanhos.forEach(t => valoresPayload.push({ atributo_id: atributoTamanhoId!, valor: t.valor }));
+      }
+      if (atributoCorId) {
+        cores.forEach(c => valoresPayload.push({ atributo_id: atributoCorId!, valor: c.nome }));
+      }
+
+      const { data: valoresInseridos, error: valoresError } = valoresPayload.length > 0
+        ? await supabase.from('produto_atributo_valores').insert(valoresPayload).select('id, atributo_id')
+        : { data: [], error: null } as any;
+      if (valoresError) throw valoresError;
+
+      const sizeVals = atributoTamanhoId ? valoresInseridos.filter((v: any) => v.atributo_id === atributoTamanhoId) : [null];
+      const colorVals = atributoCorId ? valoresInseridos.filter((v: any) => v.atributo_id === atributoCorId) : [null];
+
+      const varianteValoresPayload: Array<{ variante_id: string; atributo_id: string; atributo_valor_id: string }> = [];
+
+      let count = 0;
+      for (const s of sizeVals) {
+        for (const c of colorVals) {
+          const { data: variante, error: varianteError } = await supabase
+            .from('produto_variantes')
+            .insert({
+              produto_id: novoProdutoId,
+              sku: sku ? `${sku}-${++count}` : null,
+              preco_cents: precoCents,
+              estoque: 0,
+            })
+            .select('id')
+            .single();
+          if (varianteError) throw varianteError;
+          if (s) varianteValoresPayload.push({ variante_id: variante.id, atributo_id: atributoTamanhoId!, atributo_valor_id: s.id });
+          if (c) varianteValoresPayload.push({ variante_id: variante.id, atributo_id: atributoCorId!, atributo_valor_id: c.id });
+        }
+      }
+
+      if (varianteValoresPayload.length > 0) {
+        const { error: vvError } = await supabase.from('variante_valores').insert(varianteValoresPayload);
+        if (vvError) throw vvError;
       }
     }
 
