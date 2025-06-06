@@ -99,7 +99,18 @@ export async function POST(request: NextRequest) {
   const quantidadeEstoqueString = formData.get('quantidadeEstoque') as string | null;
   const minimoAssinantesString = formData.get('minimoAssinantes') as string | null;
 
-  const modoEntrega = formData.get('tipoEntrega') as 'parceiro' | 'integracao' | 'produto_digital' | 'servico' | null; // Renomeado no frontend
+  // Valor recebido do frontend para o modo de entrega.
+  // Esperado: 'parceiro', 'integracao', 'produto_digital' ou 'servico'.
+  // O valor 'parceiro' é mapeado internamente para 'frete_proprio'.
+  const tipoEntrega = formData.get('tipoEntrega') as
+    | 'parceiro'
+    | 'integracao'
+    | 'produto_digital'
+    | 'servico'
+    | 'frete_proprio'
+    | null;
+  const modoEntrega: 'frete_proprio' | 'integracao' | 'produto_digital' | 'servico' | null =
+    tipoEntrega === 'parceiro' ? 'frete_proprio' : tipoEntrega;
   const tabelaFreteString = formData.get('tabelaFrete') as string | null; // JSON string
   const politicaSemEntrega = formData.get('politicaSemEntrega') as string | null;
 
