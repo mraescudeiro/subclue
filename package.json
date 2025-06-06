@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dev": "yarn --cwd subclue-web dev",
-    "test:supabase": "tsx subclue-web/test/serverClient.test.ts",
+    "test:supabase": "npx tsx subclue-web/test/serverClient.test.ts",
     "check:supabase": "sh scripts/check_supabase_export.sh"
   },
   "devDependencies": {
