@@ -136,7 +136,82 @@ export default function CriarProdutoPage() {
   useEffect(() => { if (!isSkuManual) { setSku(''); } }, [isSkuManual]);
 
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => { /* ...lógica do submit... */ };
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErroSubmit(null);
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append('titulo', titulo);
+      formData.append('slug', slug);
+      formData.append('descricaoCurta', descricaoCurta);
+      formData.append('descricaoCompleta', descricaoCompleta);
+      formData.append('preco', preco);
+
+      const planoBase = planosConfigurados[0];
+      if (planoBase) {
+        formData.append('planoAssinatura', planoBase.tipoPlano);
+        formData.append('intervaloEntrega', planoBase.intervaloEntrega);
+        formData.append('quantidadeItensPorEntrega', String(planoBase.quantidadeItensPorEntrega));
+        if (planoBase.intervaloEntrega === 'custom' && planoBase.intervaloEntregaCustomDias !== undefined) {
+          formData.append('intervaloEntregaCustomDias', String(planoBase.intervaloEntregaCustomDias));
+        }
+      }
+
+      formData.append('renovacaoAutomatica', String(renovacaoAutomatica));
+      formData.append('diasAviso', String(diasAviso));
+      formData.append('descontosPorPlano', JSON.stringify(descontosPorPlano));
+      formData.append('precoPromocional', precoPromocional);
+      formData.append('dataInicioPromocional', dataInicioPromocional);
+      formData.append('dataFimPromocional', dataFimPromocional);
+
+      formData.append('categoria_id', categoriaSelecionada);
+      formData.append('subcategoria_id', subcategoriaSelecionada);
+      formData.append('tags', tags);
+
+      imagensCloudUrls.forEach((url, idx) => {
+        formData.append(`imagens[${idx}]`, url);
+      });
+
+      formData.append('gerenciarEstoque', String(gerenciarEstoque));
+      formData.append('quantidadeEstoque', String(quantidadeEstoque));
+      formData.append('minimoAssinantes', String(minimoAssinantes));
+
+      let entrega = tipoEntrega;
+      if (entrega === 'parceiro') entrega = 'frete_proprio';
+      if (entrega === 'sem_entrega') entrega = 'servico';
+      formData.append('tipoEntrega', entrega);
+
+      formData.append('tabelaFrete', JSON.stringify(tabelaFrete));
+      formData.append('politicaSemEntrega', politicaSemEntrega);
+
+      formData.append('sku', sku);
+      formData.append('peso', peso);
+      formData.append('largura', largura);
+      formData.append('altura', altura);
+      formData.append('profundidade', profundidade);
+      formData.append('dataDisponibilidade', dataDisponibilidade);
+      formData.append('tituloSeo', tituloSeo);
+      formData.append('descricaoSeo', descricaoSeo);
+      formData.append('palavrasChaveSeo', palavrasChaveSeo);
+      formData.append('tamanhos', JSON.stringify(tamanhos));
+      formData.append('cores', JSON.stringify(cores));
+
+      const response = await fetch('/api/parceiro/produtos', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro ${response.status}`);
+      }
+
+      router.push('/painel/parceiros/produtos');
+    } catch (err: any) {
+      setErroSubmit(err.message || 'Erro ao salvar.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-[#f4f8fb]">
