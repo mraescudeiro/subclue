@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   // Por padrão, redireciona para a home em caso de sucesso do OAuth.
   // A resposta é criada aqui e os cookies serão definidos nela.
-  let response = NextResponse.redirect(`${origin}/`); 
+  const response = NextResponse.redirect(`${origin}/`); 
 
   if (code) { // Somente processa se houver um 'code' (fluxo OAuth)
     console.log('[AUTH_CALLBACK_ROUTE] OAuth flow detected (code present). Attempting to exchange code for session.');
