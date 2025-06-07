@@ -21,7 +21,7 @@ export default function RootLayout({
     // Se GeistSans não estiver funcionando, substitua className={GeistSans.className} por sua fonte ou remova.
     // Exemplo com Inter: <html lang="pt-BR" className={inter.className}>
     <html lang="pt-BR" className={GeistSans.className}>
-      <body>
+      <body suppressHydrationWarning={true}>
         <Providers> {/* AuthProvider está dentro de Providers */}
           {children} {/* Isso renderizará AuthLayout ou MainAppLayout dependendo da rota */}
         </Providers>
