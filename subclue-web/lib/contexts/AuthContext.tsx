@@ -84,6 +84,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setSession(null);
       setAccessToken(null);
+      try {
+        await fetch('/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
+        });
+      } catch (e) {
+        console.error('Failed to refresh auth on signOut', e);
+      }
       router.push('/login');
     }
   }, [supabase, router, clearAuthError]);
@@ -125,6 +137,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         setSession(session);
         setAccessToken(session?.access_token ?? null);
+
+        try {
+          await fetch('/auth/refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ event, session }),
+          });
+        } catch (e) {
+          console.error('Failed to refresh auth state', e);
+        }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           router.refresh(); // força update nas Server Components
