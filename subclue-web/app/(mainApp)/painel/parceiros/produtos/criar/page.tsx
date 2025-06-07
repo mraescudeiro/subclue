@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState, FormEvent, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import SidebarParceiro from '@/components/SidebarParceiro';
 import { Loader2, Trash2, PlusCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid'; // Para gerar IDs únicos
@@ -39,6 +40,7 @@ const formatarMoeda = (valor: string): string => {
 
 export default function CriarProdutoPage() {
   const router = useRouter();
+  const { accessToken } = useAuth();
   const [titulo, setTitulo] = useState('');
   const [slug, setSlug] = useState('');
   const [descricaoCurta, setDescricaoCurta] = useState('');
@@ -199,7 +201,17 @@ export default function CriarProdutoPage() {
       formData.append('tamanhos', JSON.stringify(tamanhos));
       formData.append('cores', JSON.stringify(cores));
 
-      const response = await fetch('/api/parceiro/produtos', { method: 'POST', body: formData });
+      const headers: HeadersInit = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch('/api/parceiro/produtos', {
+        method: 'POST',
+        body: formData,
+        headers,
+        credentials: 'include',
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Erro ${response.status}`);
