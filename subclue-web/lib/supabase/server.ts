@@ -17,8 +17,36 @@ export async function createSupabaseServerClient(
   // passed (e.g. in tests).
   const cookieStore = store ?? (await cookies())
 
-  const access = cookieStore?.get('sb-access-token')?.value
-  const refresh = cookieStore?.get('sb-refresh-token')?.value
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const projectRef = (() => {
+    try {
+      const { hostname } = new URL(supabaseUrl)
+      return hostname.split('.')[0]
+    } catch {
+      return undefined
+    }
+  })()
+
+  let access = cookieStore?.get('sb-access-token')?.value
+  let refresh = cookieStore?.get('sb-refresh-token')?.value
+
+  if ((!access || !refresh) && projectRef) {
+    const parts: string[] = []
+    for (let i = 0; i < 2; i++) {
+      const part = cookieStore?.get(`sb-${projectRef}-auth-token.${i}`)?.value
+      if (part) parts.push(part)
+    }
+    if (parts.length) {
+      try {
+        const decoded = Buffer.from(parts.join(''), 'base64').toString('utf8')
+        const parsed = JSON.parse(decoded)
+        access = parsed.access_token
+        refresh = parsed.refresh_token
+      } catch {
+        // ignore decoding errors
+      }
+    }
+  }
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
