@@ -85,16 +85,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(null);
       setAccessToken(null);
       try {
-        await fetch('/auth/refresh', {
+        await fetch('/api/auth/signout', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           credentials: 'include',
-          body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
         });
       } catch (e) {
-        console.error('Failed to refresh auth on signOut', e);
+        console.error('Failed to sign out on server', e);
       }
       router.push('/login');
     }
