@@ -41,7 +41,12 @@ const parseTags = (tagsString: string | null): string[] | null => {
 export async function POST(request: NextRequest) {
   const { supabase } = await createSupabaseServerClient();
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7)
+    : authHeader ?? undefined;
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
   if (userError || !user) {
     return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 });
   }
